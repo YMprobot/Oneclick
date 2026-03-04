@@ -1,0 +1,6 @@
+{
+  "name": "oneclick-relayer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OneClick transaction relayer for Avalanche L1s"
+}

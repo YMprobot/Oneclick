@@ -1,0 +1,6 @@
+{
+  "name": "oneclick-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OneClick TypeScript SDK for passkey-based smart wallets"
+}
