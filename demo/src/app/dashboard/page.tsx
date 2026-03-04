@@ -1,76 +1,166 @@
 'use client';
 
-import { useWallet } from '@/context/WalletContext';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useWallet } from '@/context/WalletContext';
+import { RELAYER_URL } from '@/lib/constants';
+import { Header } from '@/components/Header';
+import { BalanceCard } from '@/components/BalanceCard';
+import { CopyAddress } from '@/components/CopyAddress';
+import { QuickActions } from '@/components/QuickActions';
+
+interface ChainBalance {
+  chainName: string;
+  chainId: number;
+  balance: string;
+}
+
+const MOCK_BALANCES: ChainBalance[] = [
+  { chainName: 'Fuji C-Chain', chainId: 43113, balance: '2.5000' },
+];
 
 export default function DashboardPage() {
-  const { wallet, disconnect } = useWallet();
+  const { wallet } = useWallet();
   const router = useRouter();
+  const [balances, setBalances] = useState<ChainBalance[]>([]);
+  const [totalBalance, setTotalBalance] = useState('0.0000');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
-  if (!wallet) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center">
-          <p className="text-gray-400 mb-4">No wallet connected</p>
-          <button
-            onClick={() => router.push('/')}
-            className="rounded-xl bg-red-500 px-6 py-3 font-semibold text-white hover:bg-red-600 transition-colors"
-          >
-            Go to Login
-          </button>
-        </div>
-      </main>
-    );
-  }
+  const fetchBalances = useCallback(async () => {
+    if (!wallet?.address) {
+      setBalances(MOCK_BALANCES);
+      setTotalBalance(MOCK_BALANCES[0].balance);
+      setIsDemoMode(true);
+      setIsLoading(false);
+      return;
+    }
 
-  function handleDisconnect() {
-    disconnect();
-    router.push('/');
-  }
+    try {
+      const [balanceRes, chainsRes] = await Promise.all([
+        fetch(`${RELAYER_URL}/balance?walletAddress=${wallet.address}`),
+        fetch(`${RELAYER_URL}/chains`),
+      ]);
 
-  const shortAddress = wallet.address
-    ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`
-    : 'Pending deployment';
+      if (balanceRes.ok && chainsRes.ok) {
+        const balanceData = await balanceRes.json();
+        const chainsData = await chainsRes.json();
+
+        const chainBalances: ChainBalance[] = (chainsData.chains || []).map(
+          (chain: { name: string; chainId: number }) => ({
+            chainName: chain.name,
+            chainId: chain.chainId,
+            balance: balanceData.balances?.[chain.chainId]?.toFixed(4) || '0.0000',
+          })
+        );
+
+        if (chainBalances.length > 0) {
+          setBalances(chainBalances);
+          const total = chainBalances.reduce((sum, c) => sum + parseFloat(c.balance), 0);
+          setTotalBalance(total.toFixed(4));
+          setIsDemoMode(false);
+        } else {
+          setBalances(MOCK_BALANCES);
+          setTotalBalance(MOCK_BALANCES[0].balance);
+          setIsDemoMode(true);
+        }
+      } else {
+        throw new Error('Relayer response not ok');
+      }
+    } catch {
+      setBalances(MOCK_BALANCES);
+      setTotalBalance(MOCK_BALANCES[0].balance);
+      setIsDemoMode(true);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [wallet?.address]);
+
+  useEffect(() => {
+    if (!wallet) {
+      router.push('/');
+      return;
+    }
+
+    fetchBalances();
+    const interval = setInterval(fetchBalances, 15000);
+    return () => clearInterval(interval);
+  }, [wallet, router, fetchBalances]);
+
+  if (!wallet) return null;
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-lg rounded-2xl bg-gray-900 border border-gray-800 p-8 shadow-2xl">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <button
-            onClick={handleDisconnect}
-            className="text-sm text-gray-400 hover:text-white transition-colors"
-          >
-            Disconnect
-          </button>
+    <div className="min-h-screen bg-gray-950">
+      <Header />
+
+      <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+        {isDemoMode && (
+          <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-center text-sm text-yellow-400">
+            Demo mode — connect relayer for live data
+          </div>
+        )}
+
+        {/* Wallet hero card */}
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl shadow-red-500/5">
+          <div className="mb-1 text-center">
+            {isLoading ? (
+              <div className="mx-auto h-12 w-48 animate-pulse rounded bg-gray-800" />
+            ) : (
+              <p className="text-5xl font-bold">
+                {totalBalance} <span className="text-xl text-gray-400">AVAX</span>
+              </p>
+            )}
+          </div>
+          <p className="mb-5 text-center text-sm text-gray-500">Total across all chains</p>
+
+          <div className="mb-4 flex justify-center">
+            <CopyAddress address={wallet.address} />
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            {balances.map((chain) => (
+              <span
+                key={chain.chainId}
+                className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-3 py-1 text-sm text-gray-300"
+              >
+                ⛰️ {chain.chainName}
+              </span>
+            ))}
+            {isLoading && (
+              <div className="h-6 w-28 animate-pulse rounded-full bg-gray-800" />
+            )}
+          </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-xl bg-gray-800/50 border border-gray-700 p-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Wallet Address</p>
-            <p className="font-mono text-sm">{shortAddress}</p>
-          </div>
-
-          <div className="rounded-xl bg-gray-800/50 border border-gray-700 p-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Balance</p>
-            <p className="text-3xl font-bold">0.00 <span className="text-lg text-gray-400">AVAX</span></p>
-          </div>
-
-          <div className="rounded-xl bg-gray-800/50 border border-gray-700 p-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Public Key</p>
-            <p className="font-mono text-xs text-gray-400 break-all">
-              x: {wallet.pubKeyX}
-            </p>
-            <p className="font-mono text-xs text-gray-400 break-all mt-1">
-              y: {wallet.pubKeyY}
-            </p>
-          </div>
+        {/* Chain balances grid */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {isLoading ? (
+            <>
+              <div className="h-28 animate-pulse rounded-2xl border border-gray-800 bg-gray-900" />
+              <div className="h-28 animate-pulse rounded-2xl border border-gray-800 bg-gray-900" />
+            </>
+          ) : (
+            balances.map((chain) => (
+              <BalanceCard
+                key={chain.chainId}
+                chainName={chain.chainName}
+                chainId={chain.chainId}
+                balance={chain.balance}
+                isLoading={false}
+              />
+            ))
+          )}
         </div>
 
-        <p className="mt-8 text-center text-xs text-gray-600">
-          Powered by Avalanche
-        </p>
-      </div>
-    </main>
+        {/* Quick actions */}
+        <QuickActions />
+
+        {/* Recent activity */}
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
+          <h2 className="mb-4 text-lg font-semibold">Recent Transactions</h2>
+          <p className="py-6 text-center text-sm text-gray-500">No transactions yet</p>
+        </div>
+      </main>
+    </div>
   );
 }
