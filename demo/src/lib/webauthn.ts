@@ -274,11 +274,43 @@ export async function createPasskey(username: string): Promise<PasskeyCredential
     throw new Error('Could not extract public key coordinates from COSE key');
   }
 
-  return {
-    credentialId: base64urlEncode(credential.rawId),
-    pubKeyX: '0x' + bufferToHex(x),
-    pubKeyY: '0x' + bufferToHex(y),
-  };
+  const credentialId = base64urlEncode(credential.rawId);
+  const pubKeyX = '0x' + bufferToHex(x);
+  const pubKeyY = '0x' + bufferToHex(y);
+
+  // Store credential mapping for sign-in flow
+  localStorage.setItem(`oneclick:${credentialId}`, JSON.stringify({ pubKeyX, pubKeyY }));
+
+  return { credentialId, pubKeyX, pubKeyY };
+}
+
+/**
+ * Sign in with an existing passkey using discoverable credentials.
+ * Browser/OS shows all saved passkeys for this domain.
+ */
+export async function signIn(): Promise<PasskeyCredential> {
+  const assertion = (await navigator.credentials.get({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rpId: window.location.hostname,
+      userVerification: 'required',
+    },
+  })) as PublicKeyCredential | null;
+
+  if (!assertion) {
+    throw new Error('Passkey authentication was cancelled or failed');
+  }
+
+  const credentialId = base64urlEncode(assertion.rawId);
+
+  const stored = localStorage.getItem(`oneclick:${credentialId}`);
+  if (!stored) {
+    throw new Error('Wallet not found locally. If you created this wallet on another device, import is not yet supported.');
+  }
+
+  const { pubKeyX, pubKeyY } = JSON.parse(stored) as { pubKeyX: string; pubKeyY: string };
+
+  return { credentialId, pubKeyX, pubKeyY };
 }
 
 /**

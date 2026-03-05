@@ -3,58 +3,78 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
-import { createPasskey } from '@/lib/webauthn';
+import { createPasskey, signIn } from '@/lib/webauthn';
 import { RELAYER_URL } from '@/lib/constants';
 
 export default function LoginPage() {
   const router = useRouter();
   const { setWallet } = useWallet();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<'create' | 'signin' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  async function deployAndRedirect(passkey: { credentialId: string; pubKeyX: string; pubKeyY: string }) {
+    let address = '';
+
+    try {
+      const res = await fetch(`${RELAYER_URL}/deploy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pubKeyX: passkey.pubKeyX,
+          pubKeyY: passkey.pubKeyY,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        address = data.walletAddress || '';
+      }
+    } catch {
+      // Relayer unavailable — proceed with local wallet data
+    }
+
+    setWallet({
+      address,
+      pubKeyX: passkey.pubKeyX,
+      pubKeyY: passkey.pubKeyY,
+      credentialId: passkey.credentialId,
+      isConnected: true,
+    });
+
+    router.push('/dashboard');
+  }
+
   async function handleCreateWallet() {
-    setLoading(true);
+    setLoading('create');
     setError(null);
 
     try {
       const passkey = await createPasskey('oneclick-user');
-
-      let address = '';
-
-      try {
-        const res = await fetch(`${RELAYER_URL}/deploy`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pubKeyX: passkey.pubKeyX,
-            pubKeyY: passkey.pubKeyY,
-          }),
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          address = data.walletAddress || '';
-        }
-      } catch {
-        // Relayer unavailable — proceed with local wallet data
-      }
-
-      setWallet({
-        address,
-        pubKeyX: passkey.pubKeyX,
-        pubKeyY: passkey.pubKeyY,
-        credentialId: passkey.credentialId,
-        isConnected: true,
-      });
-
-      router.push('/dashboard');
+      await deployAndRedirect(passkey);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to create passkey';
       setError(message);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   }
+
+  async function handleSignIn() {
+    setLoading('signin');
+    setError(null);
+
+    try {
+      const passkey = await signIn();
+      await deployAndRedirect(passkey);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sign in';
+      setError(message);
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  const isLoading = loading !== null;
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
@@ -66,10 +86,10 @@ export default function LoginPage() {
 
         <button
           onClick={handleCreateWallet}
-          disabled={loading}
+          disabled={isLoading}
           className="w-full flex items-center justify-center gap-3 rounded-xl bg-red-500 px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {loading ? (
+          {loading === 'create' ? (
             <>
               <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -84,7 +104,32 @@ export default function LoginPage() {
                 <path d="M7 10V8a5 5 0 0110 0v2" />
                 <rect x="5" y="10" width="14" height="11" rx="2" />
               </svg>
-              Create Wallet with Fingerprint
+              Create New Wallet
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={handleSignIn}
+          disabled={isLoading}
+          className="mt-3 w-full flex items-center justify-center gap-3 rounded-xl border border-gray-600 bg-transparent px-8 py-4 text-lg font-semibold text-white transition-colors hover:border-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {loading === 'signin' ? (
+            <>
+              <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Signing in...
+            </>
+          ) : (
+            <>
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z" />
+                <path d="M12 14c-3 0-5.5 1.5-6 4h12c-.5-2.5-3-4-6-4z" />
+                <path d="M15 8c0-1.657-.343-3-1-3" />
+              </svg>
+              Sign In to Existing Wallet
             </>
           )}
         </button>

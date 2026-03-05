@@ -17,6 +17,7 @@ interface ChainOption {
 }
 
 const DEFAULT_CHAINS: ChainOption[] = [
+  { name: 'Avalanche C-Chain', chainId: 43114 },
   { name: 'Fuji C-Chain', chainId: 43113 },
 ];
 
@@ -30,7 +31,7 @@ export default function SendPage() {
 
   const [to, setTo] = useState('');
   const [amount, setAmount] = useState('');
-  const [chainId, setChainId] = useState(43113);
+  const [chainId, setChainId] = useState(43114);
   const [chains, setChains] = useState<ChainOption[]>(DEFAULT_CHAINS);
 
   const [status, setStatus] = useState<FlowStatus>('idle');
@@ -85,7 +86,7 @@ export default function SendPage() {
   function resetForm() {
     setTo('');
     setAmount('');
-    setChainId(43113);
+    setChainId(43114);
     setStatus('idle');
     setTxHash('');
     setErrorMessage('');
