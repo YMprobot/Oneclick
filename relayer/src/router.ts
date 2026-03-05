@@ -71,7 +71,7 @@ export function createRouter(executor: Executor): Router {
         return;
       }
 
-      const { r, s } = signature;
+      const { r, s, authenticatorData, clientDataJSON } = signature;
       if (!r || !s) {
         res.status(400).json({ error: 'Signature must include r and s' });
         return;
@@ -82,14 +82,31 @@ export function createRouter(executor: Executor): Router {
       const sClean = s.startsWith('0x') ? s.slice(2) : s;
       const packedSignature = '0x' + rClean + sClean;
 
-      const hash = await executor.executeTransaction(
-        chainId,
-        walletAddress,
-        target,
-        value,
-        data,
-        packedSignature
-      );
+      let hash: string;
+
+      if (authenticatorData && clientDataJSON) {
+        // WebAuthn path: pass authenticatorData + clientDataJSON to contract
+        hash = await executor.executeWithWebAuthn(
+          chainId,
+          walletAddress,
+          target,
+          value,
+          data,
+          authenticatorData,
+          clientDataJSON,
+          packedSignature
+        );
+      } else {
+        // Legacy path: direct P256 verification
+        hash = await executor.executeTransaction(
+          chainId,
+          walletAddress,
+          target,
+          value,
+          data,
+          packedSignature
+        );
+      }
 
       res.json({ hash, chainId, status: 'confirmed' });
     } catch (error) {

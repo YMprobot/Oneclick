@@ -111,6 +111,62 @@ contract OneClickWalletTest is Test {
         assertEq(paymaster.getBalance(), 0);
     }
 
+    function testExecuteWithWebAuthn() public {
+        address wallet = factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
+        vm.deal(wallet, 1 ether);
+
+        bytes memory authenticatorData = hex"deadbeef";
+        string memory clientDataJSON = '{"type":"webauthn.get","challenge":"AAAA","origin":"https://example.com"}';
+
+        vm.prank(relayerAddr);
+        OneClickWallet(payable(wallet)).executeWithWebAuthn(
+            targetAddr,
+            0.5 ether,
+            "",
+            authenticatorData,
+            clientDataJSON,
+            fakeSig
+        );
+
+        assertEq(targetAddr.balance, 0.5 ether);
+        assertEq(OneClickWallet(payable(wallet)).nonce(), 1);
+    }
+
+    function testExecuteWithWebAuthnOnlyRelayer() public {
+        address wallet = factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
+
+        vm.prank(address(0x1234));
+        vm.expectRevert(OneClickWallet.OnlyRelayer.selector);
+        OneClickWallet(payable(wallet)).executeWithWebAuthn(
+            targetAddr,
+            0,
+            "",
+            hex"deadbeef",
+            '{"type":"webauthn.get"}',
+            fakeSig
+        );
+    }
+
+    function testPaymasterSponsorWebAuthn() public {
+        address wallet = factory.deployWallet(testPubKeyX, testPubKeyY, address(paymaster), address(mockVerifier));
+        vm.deal(wallet, 1 ether);
+
+        paymaster.deposit{value: 1 ether}();
+
+        vm.prank(relayerAddr);
+        paymaster.sponsorWebAuthnTransaction(
+            wallet,
+            targetAddr,
+            0.5 ether,
+            "",
+            hex"deadbeef",
+            '{"type":"webauthn.get","challenge":"AAAA","origin":"https://example.com"}',
+            fakeSig
+        );
+
+        assertEq(targetAddr.balance, 0.5 ether);
+    }
+
     function testDoubleDeployReverts() public {
         factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
 

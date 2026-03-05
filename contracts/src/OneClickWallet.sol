@@ -79,6 +79,54 @@ contract OneClickWallet {
         emit Executed(target, value, nonce - 1);
     }
 
+    /// @notice Execute a transaction with full WebAuthn signature verification.
+    /// The authenticator signs SHA-256(authenticatorData || SHA-256(clientDataJSON)).
+    /// @param target The destination address
+    /// @param value The ETH/AVAX value to send
+    /// @param data The calldata for the target call
+    /// @param authenticatorData Raw authenticator data from WebAuthn assertion
+    /// @param clientDataJSON Raw client data JSON string from WebAuthn assertion
+    /// @param signature 64 bytes: r (bytes 0-31) || s (bytes 32-63)
+    function executeWithWebAuthn(
+        address target,
+        uint256 value,
+        bytes calldata data,
+        bytes calldata authenticatorData,
+        string calldata clientDataJSON,
+        bytes calldata signature
+    ) external {
+        if (msg.sender != relayer) revert OnlyRelayer();
+
+        // Reconstruct the message that WebAuthn signed:
+        // message = SHA-256(authenticatorData || SHA-256(clientDataJSON))
+        bytes32 message = sha256(
+            abi.encodePacked(authenticatorData, sha256(bytes(clientDataJSON)))
+        );
+
+        _verifyP256(message, signature);
+
+        nonce++;
+
+        (bool execSuccess, ) = target.call{value: value}(data);
+        if (!execSuccess) revert ExecutionFailed();
+
+        emit Executed(target, value, nonce - 1);
+    }
+
+    /// @dev Verify a P256 signature against the owner's public key
+    function _verifyP256(bytes32 message, bytes calldata signature) internal view {
+        bytes32 r = bytes32(signature[0:32]);
+        bytes32 s = bytes32(signature[32:64]);
+
+        (bool success, bytes memory result) = verifier.staticcall(
+            abi.encode(message, r, s, ownerPubKeyX, ownerPubKeyY)
+        );
+
+        if (!success || result.length < 32 || abi.decode(result, (uint256)) != 1) {
+            revert InvalidSignature();
+        }
+    }
+
     /// @notice Returns the owner's P256 public key
     /// @return pubKeyX The X coordinate
     /// @return pubKeyY The Y coordinate

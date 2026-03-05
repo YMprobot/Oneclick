@@ -69,6 +69,30 @@ contract Paymaster {
         emit TransactionSponsored(wallet, target);
     }
 
+    /// @notice Sponsor a WebAuthn-verified transaction through a user's wallet
+    /// @param wallet The OneClickWallet to call executeWithWebAuthn on
+    /// @param target The destination address for the wallet call
+    /// @param value The ETH/AVAX value to forward
+    /// @param data The calldata for the target call
+    /// @param authenticatorData Raw authenticator data from WebAuthn assertion
+    /// @param clientDataJSON Raw client data JSON string from WebAuthn assertion
+    /// @param signature The P256 signature (64 bytes: r || s)
+    function sponsorWebAuthnTransaction(
+        address wallet,
+        address target,
+        uint256 value,
+        bytes calldata data,
+        bytes calldata authenticatorData,
+        string calldata clientDataJSON,
+        bytes calldata signature
+    ) external {
+        if (msg.sender != relayer) revert OnlyRelayer();
+
+        OneClickWallet(payable(wallet)).executeWithWebAuthn(target, value, data, authenticatorData, clientDataJSON, signature);
+
+        emit TransactionSponsored(wallet, target);
+    }
+
     /// @notice Get the contract's current balance
     /// @return The balance in wei
     function getBalance() external view returns (uint256) {

@@ -158,7 +158,12 @@ export default function SendPage() {
           value: weiValue,
           data: '0x',
           chainId,
-          signature: { r: signature.r, s: signature.s },
+          signature: {
+            r: signature.r,
+            s: signature.s,
+            authenticatorData: signature.authenticatorData,
+            clientDataJSON: signature.clientDataJSON,
+          },
         }),
       });
 

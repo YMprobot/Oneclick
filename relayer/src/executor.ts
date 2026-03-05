@@ -9,6 +9,7 @@ const FACTORY_ABI = [
 
 const WALLET_ABI = [
   'function execute(address target, uint256 value, bytes calldata data, bytes calldata signature) external',
+  'function executeWithWebAuthn(address target, uint256 value, bytes calldata data, bytes calldata authenticatorData, string calldata clientDataJSON, bytes calldata signature) external',
   'function nonce() external view returns (uint256)',
 ];
 
@@ -84,6 +85,31 @@ export class Executor {
     const wallet = new ethers.Contract(walletAddress, WALLET_ABI, signer);
 
     const tx = await wallet.execute(target, value, data, signature);
+    const receipt = await tx.wait();
+    return receipt.hash;
+  }
+
+  async executeWithWebAuthn(
+    chainId: number,
+    walletAddress: string,
+    target: string,
+    value: string,
+    data: string,
+    authenticatorData: string,
+    clientDataJSON: string,
+    packedSignature: string
+  ): Promise<string> {
+    const signer = this.getSigner(chainId);
+    const wallet = new ethers.Contract(walletAddress, WALLET_ABI, signer);
+
+    const tx = await wallet.executeWithWebAuthn(
+      target,
+      value,
+      data,
+      authenticatorData,
+      clientDataJSON,
+      packedSignature
+    );
     const receipt = await tx.wait();
     return receipt.hash;
   }
