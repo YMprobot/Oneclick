@@ -9,19 +9,30 @@ export function createRouter(executor: Executor): Router {
   // POST /deploy — deploy wallet on default chain
   router.post('/deploy', async (req, res) => {
     try {
-      const { pubKeyX, pubKeyY, credentialId } = req.body;
+      const { pubKeyX, pubKeyY } = req.body;
 
-      if (!pubKeyX || !pubKeyY || !credentialId) {
-        res.status(400).json({ error: 'Missing pubKeyX, pubKeyY, or credentialId' });
+      if (!pubKeyX || !pubKeyY) {
+        res.status(400).json({
+          error: 'Missing pubKeyX or pubKeyY',
+          received: { pubKeyX: !!pubKeyX, pubKeyY: !!pubKeyY },
+        });
         return;
       }
 
-      const chainId = getDefaultChainId();
-      const walletAddress = await executor.deployWallet(chainId, pubKeyX, pubKeyY);
+      // Ensure 0x prefix and proper bytes32 format
+      const x = pubKeyX.startsWith('0x') ? pubKeyX : '0x' + pubKeyX;
+      const y = pubKeyY.startsWith('0x') ? pubKeyY : '0x' + pubKeyY;
 
+      console.log(`POST /deploy — pubKeyX: ${x}, pubKeyY: ${y}`);
+
+      const chainId = getDefaultChainId();
+      const walletAddress = await executor.deployWallet(chainId, x, y);
+
+      console.log(`Wallet deployed at ${walletAddress} on chain ${chainId}`);
       res.json({ walletAddress, chainId });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`POST /deploy failed: ${message}`);
       res.status(500).json({ error: message });
     }
   });

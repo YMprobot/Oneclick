@@ -220,7 +220,10 @@ export async function createPasskey(username: string): Promise<PasskeyCredential
       displayName: username,
     },
     challenge: crypto.getRandomValues(new Uint8Array(32)),
-    pubKeyCredParams: [{ alg: -7, type: 'public-key' }],
+    pubKeyCredParams: [
+      { alg: -7, type: 'public-key' },   // ES256 (P-256) — what we need
+      { alg: -257, type: 'public-key' },  // RS256 — fallback for compatibility
+    ],
     authenticatorSelection: {
       authenticatorAttachment: 'platform',
       residentKey: 'preferred',
