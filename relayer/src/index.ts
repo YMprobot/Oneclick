@@ -27,6 +27,15 @@ registerChain({
   paymasterAddress,
   nativeSymbol: 'AVAX',
   explorerUrl: 'https://testnet.snowtrace.io',
+  swap: {
+    routerAddress: '0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30',
+    wavaxAddress: '0xd00ae08403B9bbb9124bB305C09058E32C39A48c',
+    tokens: [
+      { symbol: 'USDC', address: '0xB6076C93701D6a07266c31066B298AeC6dd65c2d', decimals: 6 },
+      { symbol: 'USDT', address: '0xAb231A5744C8E6c45481754928cCfFFFD4aa0732', decimals: 6 },
+    ],
+    defaultBinStep: 20,
+  },
 });
 
 // Avalanche C-Chain (mainnet)
@@ -38,6 +47,15 @@ registerChain({
   paymasterAddress,
   nativeSymbol: 'AVAX',
   explorerUrl: 'https://snowtrace.io',
+  swap: {
+    routerAddress: '0xb4315e873dBcf96Ffd0acd8EA43f689D8c20fB30',
+    wavaxAddress: '0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7',
+    tokens: [
+      { symbol: 'USDC', address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', decimals: 6 },
+      { symbol: 'USDT', address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7', decimals: 6 },
+    ],
+    defaultBinStep: 20,
+  },
 });
 
 // BEAM L1 (gaming chain)

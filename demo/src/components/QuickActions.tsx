@@ -24,11 +24,10 @@ export function QuickActions({ onReceive }: QuickActionsProps) {
         Receive
       </button>
       <button
-        disabled
-        title="Coming soon"
-        className="flex-1 rounded-xl bg-gray-800 px-6 py-3 font-semibold text-white opacity-50 cursor-not-allowed"
+        onClick={() => router.push('/swap')}
+        className="flex-1 rounded-xl bg-gray-800 px-6 py-3 font-semibold text-white transition-colors hover:bg-gray-700"
       >
-        Cross-chain
+        Swap
       </button>
     </div>
   );

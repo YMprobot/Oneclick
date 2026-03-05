@@ -1,3 +1,16 @@
+export interface SwapTokenConfig {
+  symbol: string;
+  address: string;
+  decimals: number;
+}
+
+export interface SwapConfig {
+  routerAddress: string;
+  wavaxAddress: string;
+  tokens: SwapTokenConfig[];
+  defaultBinStep: number;
+}
+
 export interface ChainConfig {
   chainId: number;
   name: string;
@@ -6,6 +19,7 @@ export interface ChainConfig {
   paymasterAddress: string;
   nativeSymbol: string;
   explorerUrl: string;
+  swap?: SwapConfig;
 }
 
 const chains: Map<number, ChainConfig> = new Map();
