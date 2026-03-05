@@ -11,6 +11,12 @@ import { QuickActions } from '@/components/QuickActions';
 import { ReceiveModal } from '@/components/ReceiveModal';
 import { TransactionList } from '@/components/TransactionList';
 
+interface TokenBalance {
+  symbol: string;
+  balance: string;
+  decimals: number;
+}
+
 interface ChainBalance {
   chainName: string;
   chainId: number;
@@ -36,6 +42,12 @@ const MOCK_BALANCES: ChainBalance[] = [
   { chainName: 'Fuji C-Chain', chainId: 43113, balance: '2.5000', nativeSymbol: 'AVAX' },
 ];
 
+const COINGECKO_IDS: Record<number, string> = {
+  43113: 'avalanche-2',
+  43114: 'avalanche-2',
+  4337: 'beam-2',
+};
+
 export default function DashboardPage() {
   const { wallet, hydrated } = useWallet();
   const router = useRouter();
@@ -45,6 +57,8 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [prices, setPrices] = useState<Record<number, number>>({});
+  const [tokenBalances, setTokenBalances] = useState<Record<number, TokenBalance[]>>({});
 
   const fetchData = useCallback(async () => {
     if (!wallet?.address) {
@@ -56,11 +70,27 @@ export default function DashboardPage() {
     }
 
     try {
-      const [balanceRes, chainsRes, txRes] = await Promise.all([
+      const [balanceRes, chainsRes, txRes, priceRes] = await Promise.all([
         fetch(`${RELAYER_URL}/balance?walletAddress=${wallet.address}`),
         fetch(`${RELAYER_URL}/chains`),
         fetch(`${RELAYER_URL}/transactions?walletAddress=${wallet.address}`),
+        fetch('https://api.coingecko.com/api/v3/simple/price?ids=avalanche-2,beam-2&vs_currencies=usd')
+          .catch(() => null),
       ]);
+
+      // Parse CoinGecko prices
+      if (priceRes?.ok) {
+        try {
+          const priceData = await priceRes.json();
+          const priceMap: Record<number, number> = {};
+          for (const [chainIdStr, geckoId] of Object.entries(COINGECKO_IDS)) {
+            priceMap[Number(chainIdStr)] = priceData[geckoId]?.usd || 0;
+          }
+          setPrices(priceMap);
+        } catch {
+          // CoinGecko parse error — skip USD display
+        }
+      }
 
       if (balanceRes.ok && chainsRes.ok) {
         const balanceData: { chainId: number; balance: string }[] = await balanceRes.json();
@@ -73,26 +103,49 @@ export default function DashboardPage() {
 
         const chainBalances: ChainBalance[] = chainsData.map((chain) => {
           const weiBalance = balanceMap.get(chain.chainId) || '0';
-          const tokenBalance = Number(weiBalance) / 1e18;
+          const nativeBalance = Number(weiBalance) / 1e18;
           return {
             chainName: chain.name,
             chainId: chain.chainId,
-            balance: tokenBalance.toFixed(4),
+            balance: nativeBalance.toFixed(4),
             nativeSymbol: chain.nativeSymbol || 'AVAX',
           };
         });
 
-        if (chainBalances.length > 0) {
-          setBalances(chainBalances);
-          const total = chainBalances.reduce((sum, c) => sum + parseFloat(c.balance), 0);
-          setTotalBalance(total.toFixed(4));
-          setIsDemoMode(false);
-        } else {
-          setBalances(MOCK_BALANCES);
-          setTotalBalance(MOCK_BALANCES[0].balance);
-          setIsDemoMode(true);
+        // Relayer responded successfully — this is NOT demo mode,
+        // even if all balances are zero (real wallet, no funds).
+        setBalances(chainBalances.length > 0 ? chainBalances : []);
+        const total = chainBalances.reduce((sum, c) => sum + parseFloat(c.balance), 0);
+        setTotalBalance(total.toFixed(4));
+        setIsDemoMode(false);
+
+        // Fetch token balances for each chain (uses already-parsed chainsData)
+        if (wallet?.address && chainsData.length > 0) {
+          const tokenResults: Record<number, TokenBalance[]> = {};
+          await Promise.all(
+            chainsData.map(async (chain) => {
+              try {
+                const tokenRes = await fetch(
+                  `${RELAYER_URL}/token-balances?walletAddress=${wallet.address}&chainId=${chain.chainId}`
+                );
+                if (tokenRes.ok) {
+                  const data: TokenBalance[] = await tokenRes.json();
+                  if (data.length > 0) {
+                    tokenResults[chain.chainId] = data;
+                  }
+                }
+              } catch {
+                // Skip token balances for this chain
+              }
+            })
+          );
+          setTokenBalances(tokenResults);
         }
       } else {
+        console.error('Relayer response not ok:', {
+          balance: balanceRes.status,
+          chains: chainsRes.status,
+        });
         throw new Error('Relayer response not ok');
       }
 
@@ -100,7 +153,8 @@ export default function DashboardPage() {
         const txData: TransactionRecord[] = await txRes.json();
         setTransactions(txData);
       }
-    } catch {
+    } catch (err) {
+      console.error('Dashboard fetch failed, entering demo mode:', err);
       setBalances(MOCK_BALANCES);
       setTotalBalance(MOCK_BALANCES[0].balance);
       setIsDemoMode(true);
@@ -139,9 +193,22 @@ export default function DashboardPage() {
           <div className="mb-1 text-center">
             {isLoading ? (
               <div className="mx-auto h-12 w-48 animate-pulse rounded bg-gray-800" />
-            ) : (
-              <p className="text-5xl font-bold">{totalBalance}</p>
-            )}
+            ) : (() => {
+              const totalUsd = balances.reduce((sum, b) => {
+                const price = prices[b.chainId] || 0;
+                return sum + parseFloat(b.balance) * price;
+              }, 0);
+              const hasPrices = Object.keys(prices).length > 0 && totalUsd > 0;
+
+              return hasPrices ? (
+                <>
+                  <p className="text-4xl font-bold">${totalUsd.toFixed(2)}</p>
+                  <p className="mt-1 text-sm text-gray-400">{totalBalance} tokens</p>
+                </>
+              ) : (
+                <p className="text-5xl font-bold">{totalBalance}</p>
+              );
+            })()}
           </div>
           <p className="mb-5 text-center text-sm text-gray-500">Total across all chains</p>
 
@@ -180,6 +247,8 @@ export default function DashboardPage() {
                 balance={chain.balance}
                 nativeSymbol={chain.nativeSymbol}
                 isLoading={false}
+                usdPrice={prices[chain.chainId]}
+                tokens={tokenBalances[chain.chainId]}
               />
             ))
           )}

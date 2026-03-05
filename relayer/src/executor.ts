@@ -177,6 +177,11 @@ export class Executor {
     return receipt.hash;
   }
 
+  getProvider(chainId: number): ethers.JsonRpcProvider {
+    const signer = this.getSigner(chainId);
+    return signer.provider as ethers.JsonRpcProvider;
+  }
+
   async getBalance(chainId: number, address: string): Promise<string> {
     const signer = this.getSigner(chainId);
     const balance = await signer.provider!.getBalance(address);

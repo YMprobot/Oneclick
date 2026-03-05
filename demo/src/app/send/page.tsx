@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { signChallenge } from '@/lib/webauthn';
 import { RELAYER_URL } from '@/lib/constants';
-import { avaxToWei, generateFakeTxHash } from '@/lib/utils';
+import { avaxToWei, toSmallestUnit, fromSmallestUnit, generateFakeTxHash } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { TransactionStatus } from '@/components/TransactionStatus';
 
@@ -16,6 +16,13 @@ interface ChainOption {
   chainId: number;
   nativeSymbol: string;
   explorerUrl: string;
+}
+
+interface TokenOption {
+  symbol: string;
+  name: string;
+  address: string;
+  decimals: number;
 }
 
 const DEFAULT_CHAINS: ChainOption[] = [
@@ -36,6 +43,12 @@ export default function SendPage() {
   const [amount, setAmount] = useState('');
   const [chainId, setChainId] = useState(43114);
   const [chains, setChains] = useState<ChainOption[]>(DEFAULT_CHAINS);
+
+  // Token selection
+  const [selectedToken, setSelectedToken] = useState<'native' | string>('native'); // 'native' or token symbol
+  const [chainTokens, setChainTokens] = useState<TokenOption[]>([]);
+  const [tokenBalance, setTokenBalance] = useState<string | null>(null);
+  const [isLoadingTokenBalance, setIsLoadingTokenBalance] = useState(false);
 
   const [status, setStatus] = useState<FlowStatus>('idle');
   const [txHash, setTxHash] = useState('');
@@ -66,11 +79,26 @@ export default function SendPage() {
           })));
         }
       })
-      .catch(() => {
-        // Keep default chains
-      });
+      .catch(() => {});
   }, [wallet, hydrated, router]);
 
+  // Fetch tokens for selected chain
+  useEffect(() => {
+    setSelectedToken('native');
+    setChainTokens([]);
+    setTokenBalance(null);
+
+    fetch(`${RELAYER_URL}/tokens?chainId=${chainId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: TokenOption[]) => {
+        if (Array.isArray(data)) {
+          setChainTokens(data);
+        }
+      })
+      .catch(() => {});
+  }, [chainId]);
+
+  // Fetch native balance
   const fetchBalance = useCallback(async () => {
     if (!wallet?.address) return;
     setIsLoadingBalance(true);
@@ -82,8 +110,8 @@ export default function SendPage() {
         const data: { chainId: number; balance: string }[] = await res.json();
         if (data.length > 0) {
           const weiBalance = data[0].balance;
-          const tokenBalance = Number(weiBalance) / 1e18;
-          setAvailableBalance(tokenBalance.toFixed(4));
+          const bal = Number(weiBalance) / 1e18;
+          setAvailableBalance(bal.toFixed(4));
         }
       }
     } catch {
@@ -97,13 +125,48 @@ export default function SendPage() {
     fetchBalance();
   }, [fetchBalance]);
 
+  // Fetch token balance when token changes
+  useEffect(() => {
+    if (selectedToken === 'native' || !wallet?.address) {
+      setTokenBalance(null);
+      return;
+    }
+
+    setIsLoadingTokenBalance(true);
+    fetch(`${RELAYER_URL}/token-balances?walletAddress=${wallet.address}&chainId=${chainId}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { symbol: string; balance: string; decimals: number }[]) => {
+        const found = data.find((t) => t.symbol === selectedToken);
+        if (found) {
+          setTokenBalance(fromSmallestUnit(found.balance, found.decimals));
+        } else {
+          setTokenBalance('0.00');
+        }
+      })
+      .catch(() => setTokenBalance(null))
+      .finally(() => setIsLoadingTokenBalance(false));
+  }, [selectedToken, wallet?.address, chainId]);
+
+  const currentChain = chains.find((c) => c.chainId === chainId);
+  const currentTokenConfig = chainTokens.find((t) => t.symbol === selectedToken);
+  const isNative = selectedToken === 'native';
+  const displaySymbol = isNative ? (currentChain?.nativeSymbol || 'AVAX') : selectedToken;
+  const displayDecimals = isNative ? 18 : (currentTokenConfig?.decimals || 6);
+  const displayBalance = isNative ? availableBalance : tokenBalance;
+  const isLoadingDisplayBalance = isNative ? isLoadingBalance : isLoadingTokenBalance;
+
   const GAS_BUFFER = 0.001;
 
   function handleMax() {
-    if (!availableBalance) return;
-    const max = parseFloat(availableBalance) - GAS_BUFFER;
-    if (max > 0) {
-      setAmount(max.toFixed(4));
+    if (!displayBalance) return;
+    if (isNative) {
+      const max = parseFloat(displayBalance) - GAS_BUFFER;
+      if (max > 0) {
+        setAmount(max.toFixed(4));
+        setAmountError('');
+      }
+    } else {
+      setAmount(displayBalance);
       setAmountError('');
     }
   }
@@ -135,6 +198,7 @@ export default function SendPage() {
     setTo('');
     setAmount('');
     setChainId(43114);
+    setSelectedToken('native');
     setStatus('idle');
     setTxHash('');
     setErrorMessage('');
@@ -142,12 +206,22 @@ export default function SendPage() {
     setToError('');
     setAmountError('');
     setAvailableBalance(null);
+    setTokenBalance(null);
   }
 
   async function handleSend() {
     if (!wallet || !validate()) return;
 
-    const weiValue = avaxToWei(amount);
+    let sendValue: string;
+    let tokenAddress: string | undefined;
+
+    if (isNative) {
+      sendValue = avaxToWei(amount);
+      tokenAddress = undefined;
+    } else {
+      sendValue = toSmallestUnit(amount, displayDecimals);
+      tokenAddress = currentTokenConfig?.address;
+    }
 
     // Step A: Prepare
     setStatus('preparing');
@@ -162,9 +236,10 @@ export default function SendPage() {
         body: JSON.stringify({
           walletAddress: wallet.address,
           target: to,
-          value: weiValue,
+          value: sendValue,
           data: '0x',
           chainId,
+          tokenAddress,
         }),
       });
 
@@ -172,7 +247,6 @@ export default function SendPage() {
       const data = await res.json();
       challengeHex = data.challenge;
     } catch {
-      // Demo mode: generate a fake challenge
       demoMode = true;
       setIsDemoMode(true);
       challengeHex = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
@@ -194,7 +268,6 @@ export default function SendPage() {
       setStatus('submitting');
 
       if (demoMode) {
-        // Simulate network delay, then show success
         await new Promise((resolve) => setTimeout(resolve, 800));
         setTxHash(generateFakeTxHash());
         setStatus('success');
@@ -207,9 +280,10 @@ export default function SendPage() {
         body: JSON.stringify({
           walletAddress: wallet.address,
           target: to,
-          value: weiValue,
+          value: sendValue,
           data: '0x',
           chainId,
+          tokenAddress,
           signature: {
             r: signature.r,
             s: signature.s,
@@ -260,15 +334,34 @@ export default function SendPage() {
                 {toError && <p className="mt-1 text-xs text-red-400">{toError}</p>}
               </div>
 
+              {/* Token selector */}
+              <div>
+                <label className="mb-2 block text-sm text-gray-400">Token</label>
+                <select
+                  value={selectedToken}
+                  onChange={(e) => setSelectedToken(e.target.value)}
+                  className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-white outline-none transition-colors focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                >
+                  <option value="native">
+                    Native ({currentChain?.nativeSymbol || 'AVAX'})
+                  </option>
+                  {chainTokens.map((t) => (
+                    <option key={t.address} value={t.symbol}>
+                      {t.symbol} — {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Amount */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <label className="text-sm text-gray-400">Amount</label>
-                  {isLoadingBalance ? (
+                  {isLoadingDisplayBalance ? (
                     <span className="text-xs text-gray-500">Loading balance...</span>
-                  ) : availableBalance !== null ? (
+                  ) : displayBalance !== null ? (
                     <span className="text-xs text-gray-400">
-                      Available: {availableBalance} {chains.find((c) => c.chainId === chainId)?.nativeSymbol || 'AVAX'}
+                      Available: {displayBalance} {displaySymbol}
                     </span>
                   ) : null}
                 </div>
@@ -278,12 +371,12 @@ export default function SendPage() {
                     value={amount}
                     onChange={(e) => { setAmount(e.target.value); setAmountError(''); }}
                     placeholder="0.0"
-                    step="0.0001"
+                    step={isNative ? '0.0001' : '0.01'}
                     min="0"
                     className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 pr-28 text-white outline-none transition-colors focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   />
                   <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
-                    {availableBalance !== null && parseFloat(availableBalance) > GAS_BUFFER && (
+                    {displayBalance !== null && parseFloat(displayBalance) > (isNative ? GAS_BUFFER : 0) && (
                       <button
                         type="button"
                         onClick={handleMax}
@@ -293,7 +386,7 @@ export default function SendPage() {
                       </button>
                     )}
                     <span className="text-sm text-gray-400">
-                      {chains.find((c) => c.chainId === chainId)?.nativeSymbol || 'AVAX'}
+                      {displaySymbol}
                     </span>
                   </div>
                 </div>
@@ -310,7 +403,7 @@ export default function SendPage() {
                 >
                   {chains.map((c) => (
                     <option key={c.chainId} value={c.chainId}>
-                      ⛰️ {c.name}
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -377,7 +470,7 @@ export default function SendPage() {
             onClick={() => router.push('/dashboard')}
             className="block w-full text-center text-sm text-gray-500 transition-colors hover:text-gray-300"
           >
-            ← Back to Dashboard
+            &larr; Back to Dashboard
           </button>
         )}
       </main>
