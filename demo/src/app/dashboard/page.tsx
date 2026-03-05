@@ -36,7 +36,7 @@ const MOCK_BALANCES: ChainBalance[] = [
 ];
 
 export default function DashboardPage() {
-  const { wallet } = useWallet();
+  const { wallet, hydrated } = useWallet();
   const router = useRouter();
   const [balances, setBalances] = useState<ChainBalance[]>([]);
   const [totalBalance, setTotalBalance] = useState('0.0000');
@@ -108,6 +108,7 @@ export default function DashboardPage() {
   }, [wallet?.address]);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!wallet) {
       router.push('/');
       return;
@@ -116,9 +117,9 @@ export default function DashboardPage() {
     fetchData();
     const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
-  }, [wallet, router, fetchData]);
+  }, [wallet, hydrated, router, fetchData]);
 
-  if (!wallet) return null;
+  if (!hydrated || !wallet) return null;
 
   return (
     <div className="min-h-screen bg-gray-950">

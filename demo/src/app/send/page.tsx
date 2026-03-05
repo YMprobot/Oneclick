@@ -14,12 +14,14 @@ type FlowStatus = 'idle' | 'preparing' | 'signing' | 'submitting' | 'success' | 
 interface ChainOption {
   name: string;
   chainId: number;
+  nativeSymbol: string;
+  explorerUrl: string;
 }
 
 const DEFAULT_CHAINS: ChainOption[] = [
-  { name: 'Avalanche C-Chain', chainId: 43114 },
-  { name: 'BEAM', chainId: 4337 },
-  { name: 'Fuji C-Chain', chainId: 43113 },
+  { name: 'Avalanche C-Chain', chainId: 43114, nativeSymbol: 'AVAX', explorerUrl: 'https://snowtrace.io' },
+  { name: 'BEAM', chainId: 4337, nativeSymbol: 'BEAM', explorerUrl: 'https://subnets.avax.network/beam' },
+  { name: 'Fuji C-Chain', chainId: 43113, nativeSymbol: 'AVAX', explorerUrl: 'https://testnet.snowtrace.io' },
 ];
 
 function isValidAddress(addr: string): boolean {
@@ -27,7 +29,7 @@ function isValidAddress(addr: string): boolean {
 }
 
 export default function SendPage() {
-  const { wallet } = useWallet();
+  const { wallet, hydrated } = useWallet();
   const router = useRouter();
 
   const [to, setTo] = useState('');
@@ -44,6 +46,7 @@ export default function SendPage() {
   const [amountError, setAmountError] = useState('');
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!wallet) {
       router.push('/');
       return;
@@ -51,17 +54,22 @@ export default function SendPage() {
 
     fetch(`${RELAYER_URL}/chains`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((data) => {
-        if (data.chains?.length > 0) {
-          setChains(data.chains.map((c: { name: string; chainId: number }) => ({ name: c.name, chainId: c.chainId })));
+      .then((data: ChainOption[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setChains(data.map((c) => ({
+            name: c.name,
+            chainId: c.chainId,
+            nativeSymbol: c.nativeSymbol || 'AVAX',
+            explorerUrl: c.explorerUrl || '',
+          })));
         }
       })
       .catch(() => {
         // Keep default chains
       });
-  }, [wallet, router]);
+  }, [wallet, hydrated, router]);
 
-  if (!wallet) return null;
+  if (!hydrated || !wallet) return null;
 
   function validate(): boolean {
     let valid = true;
@@ -104,6 +112,7 @@ export default function SendPage() {
     // Step A: Prepare
     setStatus('preparing');
     setIsDemoMode(false);
+    let demoMode = false;
 
     let challengeHex: string;
     try {
@@ -124,6 +133,7 @@ export default function SendPage() {
       challengeHex = data.challenge;
     } catch {
       // Demo mode: generate a fake challenge
+      demoMode = true;
       setIsDemoMode(true);
       challengeHex = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
         .map((b) => b.toString(16).padStart(2, '0'))
@@ -143,7 +153,7 @@ export default function SendPage() {
       // Step C: Submit
       setStatus('submitting');
 
-      if (isDemoMode) {
+      if (demoMode) {
         // Simulate network delay, then show success
         await new Promise((resolve) => setTimeout(resolve, 800));
         setTxHash(generateFakeTxHash());
@@ -219,7 +229,7 @@ export default function SendPage() {
                     className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 pr-16 text-white outline-none transition-colors focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                    AVAX
+                    {chains.find((c) => c.chainId === chainId)?.nativeSymbol || 'AVAX'}
                   </span>
                 </div>
                 {amountError && <p className="mt-1 text-xs text-red-400">{amountError}</p>}
@@ -258,7 +268,12 @@ export default function SendPage() {
 
           {status !== 'idle' && (
             <div className="space-y-6">
-              <TransactionStatus status={status} txHash={txHash} errorMessage={errorMessage} />
+              <TransactionStatus
+                status={status}
+                txHash={txHash}
+                errorMessage={errorMessage}
+                explorerUrl={chains.find((c) => c.chainId === chainId)?.explorerUrl}
+              />
 
               {isDemoMode && status === 'success' && (
                 <p className="text-center text-xs text-yellow-400">

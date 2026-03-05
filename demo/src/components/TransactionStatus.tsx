@@ -2,6 +2,7 @@ interface TransactionStatusProps {
   status: 'idle' | 'preparing' | 'signing' | 'submitting' | 'success' | 'error';
   txHash?: string;
   errorMessage?: string;
+  explorerUrl?: string;
 }
 
 const STEPS = [
@@ -17,7 +18,7 @@ function stepIndex(status: string): number {
   return idx === -1 ? (status === 'success' ? STEPS.length : -1) : idx;
 }
 
-export function TransactionStatus({ status, txHash, errorMessage }: TransactionStatusProps) {
+export function TransactionStatus({ status, txHash, errorMessage, explorerUrl }: TransactionStatusProps) {
   if (status === 'idle') return null;
 
   const current = stepIndex(status);
@@ -84,14 +85,16 @@ export function TransactionStatus({ status, txHash, errorMessage }: TransactionS
           <p className="mb-3 font-mono text-sm text-gray-400">
             {txHash.slice(0, 10)}...{txHash.slice(-8)}
           </p>
-          <a
-            href={`https://testnet.snowtrace.io/tx/${txHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-red-400 underline hover:text-red-300"
-          >
-            View on Snowtrace
-          </a>
+          {explorerUrl && (
+            <a
+              href={`${explorerUrl}/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-red-400 underline hover:text-red-300"
+            >
+              View on Explorer
+            </a>
+          )}
         </div>
       )}
       {status === 'error' && (
