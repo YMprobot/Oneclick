@@ -43,16 +43,24 @@ export default function DashboardPage() {
       ]);
 
       if (balanceRes.ok && chainsRes.ok) {
-        const balanceData = await balanceRes.json();
-        const chainsData = await chainsRes.json();
+        const balanceData: { chainId: number; balance: string }[] = await balanceRes.json();
+        const chainsData: { chainId: number; name: string }[] = await chainsRes.json();
 
-        const chainBalances: ChainBalance[] = (chainsData.chains || []).map(
-          (chain: { name: string; chainId: number }) => ({
+        // Build a lookup map: chainId → balance in wei
+        const balanceMap = new Map<number, string>();
+        for (const entry of balanceData) {
+          balanceMap.set(entry.chainId, entry.balance);
+        }
+
+        const chainBalances: ChainBalance[] = chainsData.map((chain) => {
+          const weiBalance = balanceMap.get(chain.chainId) || '0';
+          const avax = Number(weiBalance) / 1e18;
+          return {
             chainName: chain.name,
             chainId: chain.chainId,
-            balance: balanceData.balances?.[chain.chainId]?.toFixed(4) || '0.0000',
-          })
-        );
+            balance: avax.toFixed(4),
+          };
+        });
 
         if (chainBalances.length > 0) {
           setBalances(chainBalances);
