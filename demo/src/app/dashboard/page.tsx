@@ -8,6 +8,7 @@ import { Header } from '@/components/Header';
 import { BalanceCard } from '@/components/BalanceCard';
 import { CopyAddress } from '@/components/CopyAddress';
 import { QuickActions } from '@/components/QuickActions';
+import { ReceiveModal } from '@/components/ReceiveModal';
 import { TransactionList } from '@/components/TransactionList';
 
 interface ChainBalance {
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!wallet?.address) {
@@ -184,7 +186,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <QuickActions />
+        <QuickActions onReceive={() => setShowReceiveModal(true)} />
+
+        {showReceiveModal && (
+          <ReceiveModal
+            address={wallet.address}
+            onClose={() => setShowReceiveModal(false)}
+          />
+        )}
 
         {/* Recent activity */}
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">

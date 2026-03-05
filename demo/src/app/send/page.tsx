@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { signChallenge } from '@/lib/webauthn';
@@ -44,6 +44,8 @@ export default function SendPage() {
 
   const [toError, setToError] = useState('');
   const [amountError, setAmountError] = useState('');
+  const [availableBalance, setAvailableBalance] = useState<string | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -68,6 +70,43 @@ export default function SendPage() {
         // Keep default chains
       });
   }, [wallet, hydrated, router]);
+
+  const fetchBalance = useCallback(async () => {
+    if (!wallet?.address) return;
+    setIsLoadingBalance(true);
+    try {
+      const res = await fetch(
+        `${RELAYER_URL}/balance?walletAddress=${wallet.address}&chainId=${chainId}`
+      );
+      if (res.ok) {
+        const data: { chainId: number; balance: string }[] = await res.json();
+        if (data.length > 0) {
+          const weiBalance = data[0].balance;
+          const tokenBalance = Number(weiBalance) / 1e18;
+          setAvailableBalance(tokenBalance.toFixed(4));
+        }
+      }
+    } catch {
+      setAvailableBalance(null);
+    } finally {
+      setIsLoadingBalance(false);
+    }
+  }, [wallet?.address, chainId]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
+
+  const GAS_BUFFER = 0.001;
+
+  function handleMax() {
+    if (!availableBalance) return;
+    const max = parseFloat(availableBalance) - GAS_BUFFER;
+    if (max > 0) {
+      setAmount(max.toFixed(4));
+      setAmountError('');
+    }
+  }
 
   if (!hydrated || !wallet) return null;
 
@@ -102,6 +141,7 @@ export default function SendPage() {
     setIsDemoMode(false);
     setToError('');
     setAmountError('');
+    setAvailableBalance(null);
   }
 
   async function handleSend() {
@@ -222,7 +262,16 @@ export default function SendPage() {
 
               {/* Amount */}
               <div>
-                <label className="mb-2 block text-sm text-gray-400">Amount</label>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm text-gray-400">Amount</label>
+                  {isLoadingBalance ? (
+                    <span className="text-xs text-gray-500">Loading balance...</span>
+                  ) : availableBalance !== null ? (
+                    <span className="text-xs text-gray-400">
+                      Available: {availableBalance} {chains.find((c) => c.chainId === chainId)?.nativeSymbol || 'AVAX'}
+                    </span>
+                  ) : null}
+                </div>
                 <div className="relative">
                   <input
                     type="number"
@@ -231,11 +280,22 @@ export default function SendPage() {
                     placeholder="0.0"
                     step="0.0001"
                     min="0"
-                    className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 pr-16 text-white outline-none transition-colors focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                    className="w-full rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 pr-28 text-white outline-none transition-colors focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-                    {chains.find((c) => c.chainId === chainId)?.nativeSymbol || 'AVAX'}
-                  </span>
+                  <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
+                    {availableBalance !== null && parseFloat(availableBalance) > GAS_BUFFER && (
+                      <button
+                        type="button"
+                        onClick={handleMax}
+                        className="rounded-md bg-red-500/20 px-2 py-0.5 text-xs font-semibold text-red-400 transition-colors hover:bg-red-500/30"
+                      >
+                        MAX
+                      </button>
+                    )}
+                    <span className="text-sm text-gray-400">
+                      {chains.find((c) => c.chainId === chainId)?.nativeSymbol || 'AVAX'}
+                    </span>
+                  </div>
                 </div>
                 {amountError && <p className="mt-1 text-xs text-red-400">{amountError}</p>}
               </div>
