@@ -1,0 +1,7 @@
+{
+  "chainId": 4337,
+  "factory": "0x0Cb3edCCC02139c2c8990b8392b8468FA8F2b662",
+  "paymaster": "0x20dd0BdB6D028c6DCB7382A142e52e1a1Fe51E3B",
+  "deployer": "0x6c59712F41e3007783Ac5Db132F2FEb0b3DC527c",
+  "blockNumber": 8181104
+}

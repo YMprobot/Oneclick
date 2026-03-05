@@ -18,6 +18,7 @@ interface ChainOption {
 
 const DEFAULT_CHAINS: ChainOption[] = [
   { name: 'Avalanche C-Chain', chainId: 43114 },
+  { name: 'BEAM', chainId: 4337 },
   { name: 'Fuji C-Chain', chainId: 43113 },
 ];
 

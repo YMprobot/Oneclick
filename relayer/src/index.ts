@@ -32,6 +32,15 @@ registerChain({
   paymasterAddress: process.env.MAINNET_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
 });
 
+// BEAM L1 (gaming chain)
+registerChain({
+  chainId: 4337,
+  name: 'BEAM',
+  rpcUrl: process.env.BEAM_RPC_URL || 'https://build.onbeam.com/rpc',
+  factoryAddress: process.env.BEAM_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000',
+  paymasterAddress: process.env.BEAM_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
+});
+
 const executor = new Executor(process.env.PRIVATE_KEY || '');
 const router = createRouter(executor);
 app.use('/', router);
