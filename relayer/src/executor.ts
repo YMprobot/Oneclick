@@ -58,6 +58,31 @@ export class Executor {
     return walletAddress;
   }
 
+  async ensureWalletDeployed(chainId: number, pubKeyX: string, pubKeyY: string): Promise<string> {
+    const chain = getChain(chainId);
+    if (!chain) throw new Error(`Chain ${chainId} not registered`);
+
+    const signer = this.getSigner(chainId);
+    const factory = new ethers.Contract(chain.factoryAddress, FACTORY_ABI, signer);
+
+    const deployed = await factory.isDeployed(pubKeyX, pubKeyY);
+    if (deployed) {
+      return factory.getWalletAddress(pubKeyX, pubKeyY);
+    }
+
+    const tx = await factory.deployWallet(
+      pubKeyX,
+      pubKeyY,
+      await signer.getAddress(),
+      P256_VERIFIER
+    );
+    await tx.wait();
+
+    const walletAddress: string = await factory.getWalletAddress(pubKeyX, pubKeyY);
+    console.log(`Auto-deployed wallet ${walletAddress} on chain ${chainId}`);
+    return walletAddress;
+  }
+
   async getWalletAddress(chainId: number, pubKeyX: string, pubKeyY: string): Promise<string> {
     const chain = getChain(chainId);
     if (!chain) throw new Error(`Chain ${chainId} not registered`);

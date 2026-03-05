@@ -4,6 +4,8 @@ export interface ChainConfig {
   rpcUrl: string;
   factoryAddress: string;
   paymasterAddress: string;
+  nativeSymbol: string;
+  explorerUrl: string;
 }
 
 const chains: Map<number, ChainConfig> = new Map();

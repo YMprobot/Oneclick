@@ -21,6 +21,8 @@ registerChain({
   rpcUrl: process.env.FUJI_RPC_URL || 'https://api.avax-test.network/ext/bc/C/rpc',
   factoryAddress: process.env.FUJI_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000',
   paymasterAddress: process.env.FUJI_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
+  nativeSymbol: 'AVAX',
+  explorerUrl: 'https://testnet.snowtrace.io',
 });
 
 // Avalanche C-Chain (mainnet)
@@ -30,6 +32,8 @@ registerChain({
   rpcUrl: process.env.MAINNET_RPC_URL || 'https://api.avax.network/ext/bc/C/rpc',
   factoryAddress: process.env.MAINNET_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000',
   paymasterAddress: process.env.MAINNET_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
+  nativeSymbol: 'AVAX',
+  explorerUrl: 'https://snowtrace.io',
 });
 
 // BEAM L1 (gaming chain)
@@ -39,6 +43,8 @@ registerChain({
   rpcUrl: process.env.BEAM_RPC_URL || 'https://build.onbeam.com/rpc',
   factoryAddress: process.env.BEAM_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000',
   paymasterAddress: process.env.BEAM_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
+  nativeSymbol: 'BEAM',
+  explorerUrl: 'https://subnets.avax.network/beam',
 });
 
 const executor = new Executor(process.env.PRIVATE_KEY || '');

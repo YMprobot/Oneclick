@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { ethers } from 'ethers';
 import { Executor } from './executor.js';
-import { getAllChains, getDefaultChainId } from './chains.js';
+import { getAllChains, getChain, getDefaultChainId } from './chains.js';
+import { addTransaction, getTransactions } from './transactions.js';
+import { storeWallet, getWalletKeys } from './walletStore.js';
 
 export function createRouter(executor: Executor): Router {
   const router = Router();
@@ -27,6 +29,7 @@ export function createRouter(executor: Executor): Router {
 
       const chainId = getDefaultChainId();
       const walletAddress = await executor.deployWallet(chainId, x, y);
+      storeWallet(walletAddress, x, y);
 
       console.log(`Wallet deployed at ${walletAddress} on chain ${chainId}`);
       res.json({ walletAddress, chainId });
@@ -45,6 +48,12 @@ export function createRouter(executor: Executor): Router {
       if (!walletAddress || !target || value === undefined || !data || !chainId) {
         res.status(400).json({ error: 'Missing required fields' });
         return;
+      }
+
+      // Auto-deploy wallet on target chain if not yet deployed
+      const prepareKeys = getWalletKeys(walletAddress);
+      if (prepareKeys) {
+        await executor.ensureWalletDeployed(chainId, prepareKeys.pubKeyX, prepareKeys.pubKeyY);
       }
 
       const nonce = await executor.getNonce(chainId, walletAddress);
@@ -69,6 +78,12 @@ export function createRouter(executor: Executor): Router {
       if (!walletAddress || !target || value === undefined || !data || !chainId || !signature) {
         res.status(400).json({ error: 'Missing required fields' });
         return;
+      }
+
+      // Auto-deploy wallet on target chain if not yet deployed
+      const executeKeys = getWalletKeys(walletAddress);
+      if (executeKeys) {
+        await executor.ensureWalletDeployed(chainId, executeKeys.pubKeyX, executeKeys.pubKeyY);
       }
 
       const { r, s, authenticatorData, clientDataJSON } = signature;
@@ -108,11 +123,41 @@ export function createRouter(executor: Executor): Router {
         );
       }
 
+      const chain = getChain(chainId);
+      addTransaction({
+        id: crypto.randomUUID(),
+        walletAddress,
+        target,
+        value,
+        chainId,
+        chainName: chain?.name || `Chain ${chainId}`,
+        nativeSymbol: chain?.nativeSymbol || 'AVAX',
+        explorerUrl: chain?.explorerUrl || '',
+        hash,
+        status: 'confirmed',
+        timestamp: Date.now(),
+      });
+
       res.json({ hash, chainId, status: 'confirmed' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ error: message });
     }
+  });
+
+  // GET /transactions — transaction history for a wallet
+  router.get('/transactions', (req, res) => {
+    const walletAddress = req.query.walletAddress as string;
+    const limitParam = req.query.limit as string | undefined;
+
+    if (!walletAddress) {
+      res.status(400).json({ error: 'Missing walletAddress query parameter' });
+      return;
+    }
+
+    const limit = limitParam ? parseInt(limitParam, 10) : 20;
+    const records = getTransactions(walletAddress, limit);
+    res.json(records);
   });
 
   // GET /balance — wallet balance for one or all chains

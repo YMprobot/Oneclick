@@ -8,15 +8,31 @@ import { Header } from '@/components/Header';
 import { BalanceCard } from '@/components/BalanceCard';
 import { CopyAddress } from '@/components/CopyAddress';
 import { QuickActions } from '@/components/QuickActions';
+import { TransactionList } from '@/components/TransactionList';
 
 interface ChainBalance {
   chainName: string;
   chainId: number;
   balance: string;
+  nativeSymbol: string;
+}
+
+interface TransactionRecord {
+  id: string;
+  walletAddress: string;
+  target: string;
+  value: string;
+  chainId: number;
+  chainName: string;
+  nativeSymbol: string;
+  explorerUrl: string;
+  hash: string;
+  status: 'confirmed' | 'failed';
+  timestamp: number;
 }
 
 const MOCK_BALANCES: ChainBalance[] = [
-  { chainName: 'Fuji C-Chain', chainId: 43113, balance: '2.5000' },
+  { chainName: 'Fuji C-Chain', chainId: 43113, balance: '2.5000', nativeSymbol: 'AVAX' },
 ];
 
 export default function DashboardPage() {
@@ -24,10 +40,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const [balances, setBalances] = useState<ChainBalance[]>([]);
   const [totalBalance, setTotalBalance] = useState('0.0000');
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
-  const fetchBalances = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!wallet?.address) {
       setBalances(MOCK_BALANCES);
       setTotalBalance(MOCK_BALANCES[0].balance);
@@ -37,16 +54,16 @@ export default function DashboardPage() {
     }
 
     try {
-      const [balanceRes, chainsRes] = await Promise.all([
+      const [balanceRes, chainsRes, txRes] = await Promise.all([
         fetch(`${RELAYER_URL}/balance?walletAddress=${wallet.address}`),
         fetch(`${RELAYER_URL}/chains`),
+        fetch(`${RELAYER_URL}/transactions?walletAddress=${wallet.address}`),
       ]);
 
       if (balanceRes.ok && chainsRes.ok) {
         const balanceData: { chainId: number; balance: string }[] = await balanceRes.json();
-        const chainsData: { chainId: number; name: string }[] = await chainsRes.json();
+        const chainsData: { chainId: number; name: string; nativeSymbol?: string }[] = await chainsRes.json();
 
-        // Build a lookup map: chainId → balance in wei
         const balanceMap = new Map<number, string>();
         for (const entry of balanceData) {
           balanceMap.set(entry.chainId, entry.balance);
@@ -54,11 +71,12 @@ export default function DashboardPage() {
 
         const chainBalances: ChainBalance[] = chainsData.map((chain) => {
           const weiBalance = balanceMap.get(chain.chainId) || '0';
-          const avax = Number(weiBalance) / 1e18;
+          const tokenBalance = Number(weiBalance) / 1e18;
           return {
             chainName: chain.name,
             chainId: chain.chainId,
-            balance: avax.toFixed(4),
+            balance: tokenBalance.toFixed(4),
+            nativeSymbol: chain.nativeSymbol || 'AVAX',
           };
         });
 
@@ -75,6 +93,11 @@ export default function DashboardPage() {
       } else {
         throw new Error('Relayer response not ok');
       }
+
+      if (txRes.ok) {
+        const txData: TransactionRecord[] = await txRes.json();
+        setTransactions(txData);
+      }
     } catch {
       setBalances(MOCK_BALANCES);
       setTotalBalance(MOCK_BALANCES[0].balance);
@@ -90,10 +113,10 @@ export default function DashboardPage() {
       return;
     }
 
-    fetchBalances();
-    const interval = setInterval(fetchBalances, 15000);
+    fetchData();
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
-  }, [wallet, router, fetchBalances]);
+  }, [wallet, router, fetchData]);
 
   if (!wallet) return null;
 
@@ -114,9 +137,7 @@ export default function DashboardPage() {
             {isLoading ? (
               <div className="mx-auto h-12 w-48 animate-pulse rounded bg-gray-800" />
             ) : (
-              <p className="text-5xl font-bold">
-                {totalBalance} <span className="text-xl text-gray-400">AVAX</span>
-              </p>
+              <p className="text-5xl font-bold">{totalBalance}</p>
             )}
           </div>
           <p className="mb-5 text-center text-sm text-gray-500">Total across all chains</p>
@@ -154,6 +175,7 @@ export default function DashboardPage() {
                 chainName={chain.chainName}
                 chainId={chain.chainId}
                 balance={chain.balance}
+                nativeSymbol={chain.nativeSymbol}
                 isLoading={false}
               />
             ))
@@ -166,7 +188,7 @@ export default function DashboardPage() {
         {/* Recent activity */}
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
           <h2 className="mb-4 text-lg font-semibold">Recent Transactions</h2>
-          <p className="py-6 text-center text-sm text-gray-500">No transactions yet</p>
+          <TransactionList transactions={transactions} />
         </div>
       </main>
     </div>
