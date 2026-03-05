@@ -10,6 +10,7 @@ contract OneClickWallet {
     uint256 public nonce;
     address public relayer;
     address public verifier;
+    address public icmSync;
     bool private initialized;
 
     /// @notice Emitted when the wallet executes a transaction
@@ -18,8 +19,14 @@ contract OneClickWallet {
     /// @param walletNonce The nonce used for this execution
     event Executed(address indexed target, uint256 value, uint256 walletNonce);
 
+    /// @notice Emitted when the owner key is updated via ICM sync
+    /// @param pubKeyX The new X coordinate
+    /// @param pubKeyY The new Y coordinate
+    event KeyUpdated(bytes32 pubKeyX, bytes32 pubKeyY);
+
     error AlreadyInitialized();
     error OnlyRelayer();
+    error OnlyICMSync();
     error InvalidSignature();
     error ExecutionFailed();
 
@@ -125,6 +132,23 @@ contract OneClickWallet {
         if (!success || result.length < 32 || abi.decode(result, (uint256)) != 1) {
             revert InvalidSignature();
         }
+    }
+
+    /// @notice Set the ICMSync contract address (relayer only)
+    /// @param _icmSync The ICMSync contract address
+    function setICMSync(address _icmSync) external {
+        if (msg.sender != relayer) revert OnlyRelayer();
+        icmSync = _icmSync;
+    }
+
+    /// @notice Update the owner key via cross-chain sync (ICMSync only)
+    /// @param _pubKeyX The new X coordinate
+    /// @param _pubKeyY The new Y coordinate
+    function updateOwnerKey(bytes32 _pubKeyX, bytes32 _pubKeyY) external {
+        if (msg.sender != icmSync) revert OnlyICMSync();
+        ownerPubKeyX = _pubKeyX;
+        ownerPubKeyY = _pubKeyY;
+        emit KeyUpdated(_pubKeyX, _pubKeyY);
     }
 
     /// @notice Returns the owner's P256 public key
