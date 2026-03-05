@@ -14,13 +14,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Unified contract addresses (same deployer nonce on all chains)
+const factoryAddress = process.env.FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000';
+const paymasterAddress = process.env.PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000';
+
 // Fuji C-Chain (testnet)
 registerChain({
   chainId: 43113,
   name: 'Fuji C-Chain',
   rpcUrl: process.env.FUJI_RPC_URL || 'https://api.avax-test.network/ext/bc/C/rpc',
-  factoryAddress: process.env.FUJI_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000',
-  paymasterAddress: process.env.FUJI_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
+  factoryAddress,
+  paymasterAddress,
   nativeSymbol: 'AVAX',
   explorerUrl: 'https://testnet.snowtrace.io',
 });
@@ -30,8 +34,8 @@ registerChain({
   chainId: 43114,
   name: 'Avalanche C-Chain',
   rpcUrl: process.env.MAINNET_RPC_URL || 'https://api.avax.network/ext/bc/C/rpc',
-  factoryAddress: process.env.MAINNET_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000',
-  paymasterAddress: process.env.MAINNET_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
+  factoryAddress,
+  paymasterAddress,
   nativeSymbol: 'AVAX',
   explorerUrl: 'https://snowtrace.io',
 });
@@ -41,8 +45,8 @@ registerChain({
   chainId: 4337,
   name: 'BEAM',
   rpcUrl: process.env.BEAM_RPC_URL || 'https://build.onbeam.com/rpc',
-  factoryAddress: process.env.BEAM_FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000',
-  paymasterAddress: process.env.BEAM_PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000',
+  factoryAddress,
+  paymasterAddress,
   nativeSymbol: 'BEAM',
   explorerUrl: 'https://subnets.avax.network/beam',
 });

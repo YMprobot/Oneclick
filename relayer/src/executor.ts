@@ -106,11 +106,29 @@ export class Executor {
     data: string,
     signature: string
   ): Promise<string> {
+    const valueBigInt = BigInt(value);
+    console.log('execute params:', {
+      chainId,
+      walletAddress,
+      target,
+      value: valueBigInt.toString(),
+      dataLength: data.length,
+      signatureLength: signature.length,
+    });
+
     const signer = this.getSigner(chainId);
     const wallet = new ethers.Contract(walletAddress, WALLET_ABI, signer);
 
-    const tx = await wallet.execute(target, value, data, signature);
+    const tx = await wallet.execute(target, valueBigInt, data, signature);
     const receipt = await tx.wait();
+
+    console.log('execute receipt:', {
+      hash: receipt.hash,
+      status: receipt.status,
+      gasUsed: receipt.gasUsed.toString(),
+      logs: receipt.logs.length,
+    });
+
     return receipt.hash;
   }
 
@@ -124,18 +142,38 @@ export class Executor {
     clientDataJSON: string,
     packedSignature: string
   ): Promise<string> {
+    const valueBigInt = BigInt(value);
+    console.log('executeWithWebAuthn params:', {
+      chainId,
+      walletAddress,
+      target,
+      value: valueBigInt.toString(),
+      dataLength: data.length,
+      authenticatorDataLength: authenticatorData.length,
+      clientDataJSONLength: clientDataJSON.length,
+      signatureLength: packedSignature.length,
+    });
+
     const signer = this.getSigner(chainId);
     const wallet = new ethers.Contract(walletAddress, WALLET_ABI, signer);
 
     const tx = await wallet.executeWithWebAuthn(
       target,
-      value,
+      valueBigInt,
       data,
       authenticatorData,
       clientDataJSON,
       packedSignature
     );
     const receipt = await tx.wait();
+
+    console.log('executeWithWebAuthn receipt:', {
+      hash: receipt.hash,
+      status: receipt.status,
+      gasUsed: receipt.gasUsed.toString(),
+      logs: receipt.logs.length,
+    });
+
     return receipt.hash;
   }
 

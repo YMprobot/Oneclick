@@ -1,7 +1,7 @@
 {
   "chainId": 43113,
-  "factory": "0x76877806c4934B8F271e7ecE1aa407A02C39c91a",
-  "paymaster": "0x8C278Ae0Fb894FB6e8d0e6356f76ba90d8df0960",
-  "deployer": "0x6c59712F41e3007783Ac5Db132F2FEb0b3DC527c",
+  "factory": "0xA8aEE38536738cc54b1c5bfd9BB0F850Ca9B0572",
+  "paymaster": "0x27Ae2cb737041430e5d3B3dA7652cB6F1C6c9174",
+  "deployer": "0x17523Fce08784bE4135ab70693746BE0Ddd10302",
   "blockNumber": 52374633
 }

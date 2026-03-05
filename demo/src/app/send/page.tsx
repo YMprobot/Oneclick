@@ -179,11 +179,16 @@ export default function SendPage() {
         }),
       });
 
-      if (!execRes.ok) throw new Error('Transaction failed');
+      if (!execRes.ok) {
+        const errorBody = await execRes.json().catch(() => null);
+        throw new Error(errorBody?.error || `Transaction failed (${execRes.status})`);
+      }
       const result = await execRes.json();
       setTxHash(result.hash);
+      setIsDemoMode(false);
       setStatus('success');
     } catch (err) {
+      console.error('Transaction failed:', err);
       const msg = err instanceof Error ? err.message : 'Transaction failed';
       setErrorMessage(msg);
       setStatus('error');

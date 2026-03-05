@@ -43,18 +43,24 @@ export function createRouter(executor: Executor): Router {
   // POST /prepare-transaction — build challenge hash for signing
   router.post('/prepare-transaction', async (req, res) => {
     try {
-      const { walletAddress, target, value, data, chainId } = req.body;
+      const { walletAddress: requestedAddress, target, value, data, chainId } = req.body;
 
-      if (!walletAddress || !target || value === undefined || !data || !chainId) {
+      console.log(`POST /prepare-transaction — wallet: ${requestedAddress}, target: ${target}, value: ${value}, chainId: ${chainId}`);
+
+      if (!requestedAddress || !target || value === undefined || !data || !chainId) {
         res.status(400).json({ error: 'Missing required fields' });
         return;
       }
 
-      // Auto-deploy wallet on target chain if not yet deployed
-      const prepareKeys = getWalletKeys(walletAddress);
-      if (prepareKeys) {
-        await executor.ensureWalletDeployed(chainId, prepareKeys.pubKeyX, prepareKeys.pubKeyY);
+      // Resolve the correct wallet address for the target chain
+      const keys = getWalletKeys(requestedAddress);
+      if (!keys) {
+        res.status(400).json({ error: 'Wallet keys not found. Please reconnect.' });
+        return;
       }
+
+      const walletAddress = await executor.ensureWalletDeployed(chainId, keys.pubKeyX, keys.pubKeyY);
+      console.log(`  resolved wallet for chain ${chainId}: ${walletAddress} (requested: ${requestedAddress})`);
 
       const nonce = await executor.getNonce(chainId, walletAddress);
 
@@ -63,9 +69,11 @@ export function createRouter(executor: Executor): Router {
         [walletAddress, target, value, data, nonce]
       );
 
-      res.json({ challenge, nonce: nonce.toString() });
+      console.log(`  challenge: ${challenge}, nonce: ${nonce}`);
+      res.json({ challenge, nonce: nonce.toString(), walletAddress });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`POST /prepare-transaction failed: ${message}`);
       res.status(500).json({ error: message });
     }
   });
@@ -73,18 +81,24 @@ export function createRouter(executor: Executor): Router {
   // POST /execute-transaction — submit signed transaction
   router.post('/execute-transaction', async (req, res) => {
     try {
-      const { walletAddress, target, value, data, chainId, signature } = req.body;
+      const { walletAddress: requestedAddress, target, value, data, chainId, signature } = req.body;
 
-      if (!walletAddress || !target || value === undefined || !data || !chainId || !signature) {
+      console.log(`POST /execute-transaction — wallet: ${requestedAddress}, target: ${target}, value: ${value}, chainId: ${chainId}`);
+
+      if (!requestedAddress || !target || value === undefined || !data || !chainId || !signature) {
         res.status(400).json({ error: 'Missing required fields' });
         return;
       }
 
-      // Auto-deploy wallet on target chain if not yet deployed
-      const executeKeys = getWalletKeys(walletAddress);
-      if (executeKeys) {
-        await executor.ensureWalletDeployed(chainId, executeKeys.pubKeyX, executeKeys.pubKeyY);
+      // Resolve the correct wallet address for the target chain
+      const keys = getWalletKeys(requestedAddress);
+      if (!keys) {
+        res.status(400).json({ error: 'Wallet keys not found. Please reconnect.' });
+        return;
       }
+
+      const walletAddress = await executor.ensureWalletDeployed(chainId, keys.pubKeyX, keys.pubKeyY);
+      console.log(`  resolved wallet for chain ${chainId}: ${walletAddress} (requested: ${requestedAddress})`);
 
       const { r, s, authenticatorData, clientDataJSON } = signature;
       if (!r || !s) {
@@ -96,6 +110,8 @@ export function createRouter(executor: Executor): Router {
       const rClean = r.startsWith('0x') ? r.slice(2) : r;
       const sClean = s.startsWith('0x') ? s.slice(2) : s;
       const packedSignature = '0x' + rClean + sClean;
+
+      console.log(`  path: ${authenticatorData ? 'WebAuthn' : 'Legacy P256'}, sig length: ${packedSignature.length}`);
 
       let hash: string;
 
@@ -138,9 +154,11 @@ export function createRouter(executor: Executor): Router {
         timestamp: Date.now(),
       });
 
+      console.log(`  confirmed: ${hash}`);
       res.json({ hash, chainId, status: 'confirmed' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`POST /execute-transaction failed: ${message}`);
       res.status(500).json({ error: message });
     }
   });
@@ -163,18 +181,24 @@ export function createRouter(executor: Executor): Router {
   // GET /balance — wallet balance for one or all chains
   router.get('/balance', async (req, res) => {
     try {
-      const walletAddress = req.query.walletAddress as string;
+      const requestedAddress = req.query.walletAddress as string;
       const chainIdParam = req.query.chainId as string | undefined;
 
-      if (!walletAddress) {
+      if (!requestedAddress) {
         res.status(400).json({ error: 'Missing walletAddress query parameter' });
         return;
       }
 
+      const keys = getWalletKeys(requestedAddress);
+
       if (chainIdParam) {
         const chainId = parseInt(chainIdParam, 10);
-        const balance = await executor.getBalance(chainId, walletAddress);
-        res.json([{ chainId, balance }]);
+        // Resolve chain-specific address if keys are available
+        const chainWalletAddress = keys
+          ? await executor.getWalletAddress(chainId, keys.pubKeyX, keys.pubKeyY)
+          : requestedAddress;
+        const balance = await executor.getBalance(chainId, chainWalletAddress);
+        res.json([{ chainId, balance, walletAddress: chainWalletAddress }]);
         return;
       }
 
@@ -182,8 +206,12 @@ export function createRouter(executor: Executor): Router {
       const chains = getAllChains();
       const balances = await Promise.all(
         chains.map(async (chain) => {
-          const balance = await executor.getBalance(chain.chainId, walletAddress);
-          return { chainId: chain.chainId, balance };
+          // Resolve chain-specific address if keys are available
+          const chainWalletAddress = keys
+            ? await executor.getWalletAddress(chain.chainId, keys.pubKeyX, keys.pubKeyY)
+            : requestedAddress;
+          const balance = await executor.getBalance(chain.chainId, chainWalletAddress);
+          return { chainId: chain.chainId, balance, walletAddress: chainWalletAddress };
         })
       );
 
