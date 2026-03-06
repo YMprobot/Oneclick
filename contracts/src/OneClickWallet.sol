@@ -120,6 +120,27 @@ contract OneClickWallet {
         emit Executed(target, value, nonce - 1);
     }
 
+    /// @notice Execute a transaction using relayer authority only (no user signature).
+    /// Used for multi-step smart routing where the user already authorised Step 1
+    /// with their passkey.  The relayer is a trusted party (msg.sender check).
+    /// @param target The destination address
+    /// @param value The ETH/AVAX value to send
+    /// @param data The calldata for the target call
+    function executeAsRelayer(
+        address target,
+        uint256 value,
+        bytes calldata data
+    ) external {
+        if (msg.sender != relayer) revert OnlyRelayer();
+
+        nonce++;
+
+        (bool execSuccess, ) = target.call{value: value}(data);
+        if (!execSuccess) revert ExecutionFailed();
+
+        emit Executed(target, value, nonce - 1);
+    }
+
     /// @dev Verify a P256 signature against the owner's public key
     function _verifyP256(bytes32 message, bytes calldata signature) internal view {
         bytes32 r = bytes32(signature[0:32]);

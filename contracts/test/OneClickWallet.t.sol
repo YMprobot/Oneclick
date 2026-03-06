@@ -167,6 +167,53 @@ contract OneClickWalletTest is Test {
         assertEq(targetAddr.balance, 0.5 ether);
     }
 
+    function testExecuteAsRelayer() public {
+        address wallet = factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
+        vm.deal(wallet, 1 ether);
+
+        vm.prank(relayerAddr);
+        OneClickWallet(payable(wallet)).executeAsRelayer(targetAddr, 0.5 ether, "");
+
+        assertEq(targetAddr.balance, 0.5 ether);
+        assertEq(OneClickWallet(payable(wallet)).nonce(), 1);
+    }
+
+    function testExecuteAsRelayerOnlyRelayer() public {
+        address wallet = factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
+
+        vm.prank(address(0x1234));
+        vm.expectRevert(OneClickWallet.OnlyRelayer.selector);
+        OneClickWallet(payable(wallet)).executeAsRelayer(targetAddr, 0, "");
+    }
+
+    function testSmartRouteMultiStep() public {
+        // Simulates smart route: Step 1 (executeWithWebAuthn) + Step 2 (executeAsRelayer)
+        address wallet = factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
+        vm.deal(wallet, 2 ether);
+
+        bytes memory authenticatorData = hex"deadbeef";
+        string memory clientDataJSON = '{"type":"webauthn.get","challenge":"AAAA","origin":"https://example.com"}';
+
+        // Step 1: user-signed swap
+        vm.prank(relayerAddr);
+        OneClickWallet(payable(wallet)).executeWithWebAuthn(
+            targetAddr,
+            0.5 ether,
+            "",
+            authenticatorData,
+            clientDataJSON,
+            fakeSig
+        );
+        assertEq(OneClickWallet(payable(wallet)).nonce(), 1);
+        assertEq(targetAddr.balance, 0.5 ether);
+
+        // Step 2: relayer-authority transfer (no signature)
+        vm.prank(relayerAddr);
+        OneClickWallet(payable(wallet)).executeAsRelayer(targetAddr, 0.3 ether, "");
+        assertEq(OneClickWallet(payable(wallet)).nonce(), 2);
+        assertEq(targetAddr.balance, 0.8 ether);
+    }
+
     function testDoubleDeployReverts() public {
         factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
 

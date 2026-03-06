@@ -98,16 +98,16 @@ export async function planTransaction(
     // Not enough! Need to swap AVAX -> this token first
     const shortfall = transferAmount - tokenBalance;
 
-    // Add 5% buffer for price movement
-    const swapAmountNeeded = shortfall + (shortfall * 5n) / 100n;
+    // Add 30% buffer for price movement & DEX slippage (testnet pools are thin)
+    const swapAmountNeeded = shortfall + (shortfall * 30n) / 100n;
 
     // Estimate AVAX needed using approximate price ($25)
     const avaxPriceUsd = 25;
     const usdNeeded =
       Number(swapAmountNeeded) / 10 ** decimals;
     const avaxNeeded = usdNeeded / avaxPriceUsd;
-    // Add 10% buffer on AVAX side too
-    const avaxWithBuffer = avaxNeeded * 1.1;
+    // Add 20% buffer on AVAX side too (testnet DEX liquidity is low)
+    const avaxWithBuffer = avaxNeeded * 1.2;
     const avaxWei = BigInt(
       Math.ceil(avaxWithBuffer * 1e18)
     );

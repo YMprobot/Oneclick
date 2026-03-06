@@ -204,13 +204,28 @@ export function createRouter(executor: Executor): Router {
       const smartRouteSteps: SmartRouteStep[] = [];
       let finalHash: string;
 
+      // Use generous gas limit for wallet contract calls (P256 verification + nested DEX calls)
+      const SMART_ROUTE_GAS = 2_000_000n;
+      const SINGLE_TX_GAS = 1_000_000n;
+
       if (plan.needsSwap && plan.swapDetails && chain?.swap) {
+        // Smart routing requires WebAuthn: executeWithWebAuthn does NOT bind the
+        // signature to (target, value, data, nonce), so the same sig can be reused
+        // across multiple steps.  The legacy execute() path binds the signature to
+        // a specific (target, value, data, nonce), making multi-step impossible.
+        if (!authenticatorData || !clientDataJSON) {
+          res.status(400).json({
+            error: 'Smart routing requires WebAuthn signature (authenticatorData + clientDataJSON). Legacy P256 signatures are bound to a single transaction and cannot be reused across steps.',
+          });
+          return;
+        }
+
         console.log(`  smart route: auto-swap ${plan.swapDetails.fromToken} -> ${plan.swapDetails.toToken}`);
 
         // Step 1: Execute the swap (AVAX -> Token)
         const swapStep = plan.steps.find((s) => s.type === 'swap');
         if (!swapStep) {
-          res.status(500).json({ error: 'Smart route: swap step missing' });
+          res.status(500).json({ error: 'Smart route: swap step missing in plan' });
           return;
         }
 
@@ -223,6 +238,23 @@ export function createRouter(executor: Executor): Router {
           return;
         }
 
+        const swapValue = swapStep.value;
+
+        // Pre-check: does the wallet have enough native AVAX for the swap?
+        const nativeBalance = await provider.getBalance(walletAddress);
+        const swapValueBig = BigInt(swapValue);
+        if (nativeBalance < swapValueBig) {
+          const needed = ethers.formatEther(swapValueBig);
+          const available = ethers.formatEther(nativeBalance);
+          console.error(`  insufficient AVAX: need ${needed} but wallet has ${available}`);
+          res.status(400).json({
+            error: `Insufficient ${chain.nativeSymbol} for auto-swap. Need ${needed} ${chain.nativeSymbol} but wallet has ${available} ${chain.nativeSymbol}. Fund the wallet first.`,
+          });
+          return;
+        }
+
+        console.log(`  wallet AVAX balance: ${ethers.formatEther(nativeBalance)}, swap needs: ${ethers.formatEther(swapValueBig)}`);
+
         const deadline = Math.floor(Date.now() / 1000) + 1200;
         const swapCalldata = buildSwapNativeForTokensCalldata(
           0n, // testnet: accept any output
@@ -233,18 +265,18 @@ export function createRouter(executor: Executor): Router {
           deadline
         );
 
-        const swapValue = swapStep.value;
-
         let swapHash: string;
-        if (authenticatorData && clientDataJSON) {
+        try {
           swapHash = await executor.executeWithWebAuthn(
             chainId, walletAddress, routerAddress, swapValue, swapCalldata,
-            authenticatorData, clientDataJSON, packedSignature
+            authenticatorData, clientDataJSON, packedSignature,
+            SMART_ROUTE_GAS
           );
-        } else {
-          swapHash = await executor.executeTransaction(
-            chainId, walletAddress, routerAddress, swapValue, swapCalldata, packedSignature
-          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Swap step failed';
+          console.error(`  smart route swap step failed: ${msg}`);
+          res.status(500).json({ error: `Smart route swap failed: ${msg}` });
+          return;
         }
         console.log(`  swap step confirmed: ${swapHash}`);
         smartRouteSteps.push({
@@ -253,24 +285,85 @@ export function createRouter(executor: Executor): Router {
           hash: swapHash,
         });
 
-        // Step 2: Execute the original transfer
+        // Post-swap balance check: verify the swap yielded enough tokens for the transfer.
+        // Without this, executeAsRelayer succeeds but the inner ERC20 transfer reverts
+        // with ExecutionFailed, giving a cryptic error.
+        //
+        // Tolerance: if the wallet has >= 98% of the required amount, proceed with
+        // transferring whatever is available (rebuild calldata with postSwapBalance).
+        // Only error out if < 98%.
+        if (tokenAddress) {
+          const tokenContract = new ethers.Contract(actualTarget, ERC20_ABI, provider);
+          const postSwapBalance: bigint = await tokenContract.balanceOf(walletAddress);
+          const iface = new ethers.Interface(ERC20_ABI);
+          const decoded = iface.decodeFunctionData('transfer', actualData);
+          const requiredAmount: bigint = decoded[1];
+          const minAcceptable = requiredAmount * 98n / 100n;
+
+          console.log(`  post-swap token balance: ${postSwapBalance.toString()}, required: ${requiredAmount.toString()}, minAcceptable (98%): ${minAcceptable.toString()}`);
+
+          if (postSwapBalance < minAcceptable) {
+            // Less than 98% — hard error, slippage too high
+            const tokenConfig = chain?.swap?.tokens.find(
+              (t) => t.address.toLowerCase() === actualTarget.toLowerCase()
+            );
+            const decimals = tokenConfig?.decimals || 18;
+            const symbol = tokenConfig?.symbol || 'TOKEN';
+            const have = ethers.formatUnits(postSwapBalance, decimals);
+            const need = ethers.formatUnits(requiredAmount, decimals);
+            console.error(`  insufficient token balance after swap: have ${have} ${symbol}, need ${need} ${symbol}`);
+            res.status(500).json({
+              error: `Smart route: swap succeeded but received insufficient tokens. Have ${have} ${symbol}, need ${need} ${symbol}. The swap tx hash: ${swapHash}. Try sending a smaller amount or fund the wallet with more ${chain?.nativeSymbol || 'AVAX'}.`,
+              partialResult: {
+                swapHash,
+                swapDescription: swapStep.description,
+                postSwapBalance: have,
+                requiredAmount: need,
+                tokenSymbol: symbol,
+              },
+            });
+            return;
+          }
+
+          // If we have enough but slightly less than requested, transfer available balance
+          if (postSwapBalance < requiredAmount) {
+            const transferAmount = postSwapBalance;
+            const recipient = decoded[0] as string;
+            actualData = iface.encodeFunctionData('transfer', [recipient, transferAmount]);
+            console.log(`  adjusted transfer amount: ${transferAmount.toString()} (was ${requiredAmount.toString()})`);
+          }
+        }
+
+        // Step 2: Execute the original transfer using relayer authority.
+        // After Step 1 the wallet nonce has incremented, making the original WebAuthn
+        // signature unusable for a second executeWithWebAuthn call.  executeAsRelayer
+        // requires only msg.sender == relayer — no user signature needed.
         const transferStep = plan.steps.find((s) => s.type === 'execute');
         if (!transferStep) {
-          res.status(500).json({ error: 'Smart route: transfer step missing' });
+          res.status(500).json({ error: 'Smart route: transfer step missing in plan' });
           return;
         }
 
+        console.log(`  step2 (executeAsRelayer): target=${actualTarget}, value=${actualValue}, data=${actualData.slice(0, 10)}... (${actualData.length} chars)`);
+
         let transferHash: string;
-        if (authenticatorData && clientDataJSON) {
-          transferHash = await executor.executeWithWebAuthn(
-            chainId, walletAddress, transferStep.target, transferStep.value, transferStep.data,
-            authenticatorData, clientDataJSON, packedSignature
+        try {
+          transferHash = await executor.executeAsRelayer(
+            chainId, walletAddress, actualTarget, actualValue, actualData,
+            SMART_ROUTE_GAS
           );
-        } else {
-          transferHash = await executor.executeTransaction(
-            chainId, walletAddress, transferStep.target, transferStep.value, transferStep.data,
-            packedSignature
-          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Transfer step failed';
+          console.error(`  smart route transfer step failed: ${msg}`);
+          // Still return partial success — the swap already confirmed
+          res.status(500).json({
+            error: `Smart route transfer failed (swap succeeded): ${msg}`,
+            partialResult: {
+              swapHash: smartRouteSteps[0]?.hash,
+              swapDescription: smartRouteSteps[0]?.description,
+            },
+          });
+          return;
         }
         console.log(`  transfer step confirmed: ${transferHash}`);
         smartRouteSteps.push({
@@ -285,11 +378,13 @@ export function createRouter(executor: Executor): Router {
         if (authenticatorData && clientDataJSON) {
           finalHash = await executor.executeWithWebAuthn(
             chainId, walletAddress, actualTarget, actualValue, actualData,
-            authenticatorData, clientDataJSON, packedSignature
+            authenticatorData, clientDataJSON, packedSignature,
+            SINGLE_TX_GAS
           );
         } else {
           finalHash = await executor.executeTransaction(
-            chainId, walletAddress, actualTarget, actualValue, actualData, packedSignature
+            chainId, walletAddress, actualTarget, actualValue, actualData, packedSignature,
+            SINGLE_TX_GAS
           );
         }
       }
@@ -360,23 +455,38 @@ export function createRouter(executor: Executor): Router {
       if (chainIdParam) {
         const chainId = parseInt(chainIdParam, 10);
         // Resolve chain-specific address if keys are available
-        const chainWalletAddress = keys
-          ? await executor.getWalletAddress(chainId, keys.pubKeyX, keys.pubKeyY)
-          : requestedAddress;
-        const balance = await executor.getBalance(chainId, chainWalletAddress);
+        let chainWalletAddress = requestedAddress;
+        try {
+          if (keys) chainWalletAddress = await executor.getWalletAddress(chainId, keys.pubKeyX, keys.pubKeyY);
+        } catch {
+          // Factory not deployed on this chain — use raw address
+        }
+        let balance = '0';
+        try {
+          balance = await executor.getBalance(chainId, chainWalletAddress);
+        } catch {
+          // RPC unreachable for this chain
+        }
         res.json([{ chainId, balance, walletAddress: chainWalletAddress }]);
         return;
       }
 
-      // Return balances for all registered chains
+      // Return balances for all registered chains — errors per-chain don't crash the response
       const chains = getAllChains();
       const balances = await Promise.all(
         chains.map(async (chain) => {
-          // Resolve chain-specific address if keys are available
-          const chainWalletAddress = keys
-            ? await executor.getWalletAddress(chain.chainId, keys.pubKeyX, keys.pubKeyY)
-            : requestedAddress;
-          const balance = await executor.getBalance(chain.chainId, chainWalletAddress);
+          let chainWalletAddress = requestedAddress;
+          try {
+            if (keys) chainWalletAddress = await executor.getWalletAddress(chain.chainId, keys.pubKeyX, keys.pubKeyY);
+          } catch {
+            // Factory not deployed on this chain — use raw address
+          }
+          let balance = '0';
+          try {
+            balance = await executor.getBalance(chain.chainId, chainWalletAddress);
+          } catch {
+            // RPC unreachable for this chain
+          }
           return { chainId: chain.chainId, balance, walletAddress: chainWalletAddress };
         })
       );
@@ -688,11 +798,13 @@ export function createRouter(executor: Executor): Router {
         if (authenticatorData && clientDataJSON) {
           hash = await executor.executeWithWebAuthn(
             chainId, walletAddress, routerAddress, amount, swapCalldata,
-            authenticatorData, clientDataJSON, packedSignature
+            authenticatorData, clientDataJSON, packedSignature,
+            2_000_000n
           );
         } else {
           hash = await executor.executeTransaction(
-            chainId, walletAddress, routerAddress, amount, swapCalldata, packedSignature
+            chainId, walletAddress, routerAddress, amount, swapCalldata, packedSignature,
+            2_000_000n
           );
         }
       } else if (!isFromNative && isToNative) {
@@ -716,11 +828,13 @@ export function createRouter(executor: Executor): Router {
         if (authenticatorData && clientDataJSON) {
           await executor.executeWithWebAuthn(
             chainId, walletAddress, tokenConfig.address, '0', approveCalldata,
-            authenticatorData, clientDataJSON, packedSignature
+            authenticatorData, clientDataJSON, packedSignature,
+            1_000_000n
           );
         } else {
           await executor.executeTransaction(
-            chainId, walletAddress, tokenConfig.address, '0', approveCalldata, packedSignature
+            chainId, walletAddress, tokenConfig.address, '0', approveCalldata, packedSignature,
+            1_000_000n
           );
         }
 
@@ -741,11 +855,13 @@ export function createRouter(executor: Executor): Router {
         if (authenticatorData && clientDataJSON) {
           hash = await executor.executeWithWebAuthn(
             chainId, walletAddress, routerAddress, '0', swapCalldata,
-            authenticatorData, clientDataJSON, packedSignature
+            authenticatorData, clientDataJSON, packedSignature,
+            2_000_000n
           );
         } else {
           hash = await executor.executeTransaction(
-            chainId, walletAddress, routerAddress, '0', swapCalldata, packedSignature
+            chainId, walletAddress, routerAddress, '0', swapCalldata, packedSignature,
+            2_000_000n
           );
         }
       } else {

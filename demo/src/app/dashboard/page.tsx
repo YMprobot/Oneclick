@@ -38,10 +38,6 @@ interface TransactionRecord {
   timestamp: number;
 }
 
-const MOCK_BALANCES: ChainBalance[] = [
-  { chainName: 'Fuji C-Chain', chainId: 43113, balance: '2.5000', nativeSymbol: 'AVAX' },
-];
-
 const COINGECKO_IDS: Record<number, string> = {
   43113: 'avalanche-2',
   43114: 'avalanche-2',
@@ -55,16 +51,12 @@ export default function DashboardPage() {
   const [totalBalance, setTotalBalance] = useState('0.0000');
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [prices, setPrices] = useState<Record<number, number>>({});
   const [tokenBalances, setTokenBalances] = useState<Record<number, TokenBalance[]>>({});
 
   const fetchData = useCallback(async () => {
     if (!wallet?.address) {
-      setBalances(MOCK_BALANCES);
-      setTotalBalance(MOCK_BALANCES[0].balance);
-      setIsDemoMode(true);
       setIsLoading(false);
       return;
     }
@@ -112,12 +104,9 @@ export default function DashboardPage() {
           };
         });
 
-        // Relayer responded successfully — this is NOT demo mode,
-        // even if all balances are zero (real wallet, no funds).
         setBalances(chainBalances.length > 0 ? chainBalances : []);
         const total = chainBalances.reduce((sum, c) => sum + parseFloat(c.balance), 0);
         setTotalBalance(total.toFixed(4));
-        setIsDemoMode(false);
 
         // Fetch token balances for each chain (uses already-parsed chainsData)
         if (wallet?.address && chainsData.length > 0) {
@@ -154,10 +143,10 @@ export default function DashboardPage() {
         setTransactions(txData);
       }
     } catch (err) {
-      console.error('Dashboard fetch failed, entering demo mode:', err);
-      setBalances(MOCK_BALANCES);
-      setTotalBalance(MOCK_BALANCES[0].balance);
-      setIsDemoMode(true);
+      console.error('Dashboard fetch failed:', err);
+      // Show empty state instead of fake data
+      setBalances([]);
+      setTotalBalance('0.0000');
     } finally {
       setIsLoading(false);
     }
@@ -182,12 +171,6 @@ export default function DashboardPage() {
       <Header />
 
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-        {isDemoMode && (
-          <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-4 py-3 text-center text-sm text-yellow-400">
-            Demo mode — connect relayer for live data
-          </div>
-        )}
-
         {/* Wallet hero card */}
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl shadow-red-500/5">
           <div className="mb-1 text-center">

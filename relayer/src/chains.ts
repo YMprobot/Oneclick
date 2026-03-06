@@ -37,8 +37,8 @@ export function getAllChains(): ChainConfig[] {
 }
 
 export function getDefaultChainId(): number {
-  // Default to Avalanche mainnet C-Chain
-  if (chains.has(43114)) return 43114;
+  // Default to Fuji testnet (contracts are deployed there)
+  if (chains.has(43113)) return 43113;
   const first = chains.values().next();
   if (first.done) throw new Error('No chains registered');
   return first.value.chainId;

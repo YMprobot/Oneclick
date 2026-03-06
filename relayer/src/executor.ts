@@ -10,6 +10,7 @@ const FACTORY_ABI = [
 const WALLET_ABI = [
   'function execute(address target, uint256 value, bytes calldata data, bytes calldata signature) external',
   'function executeWithWebAuthn(address target, uint256 value, bytes calldata data, bytes calldata authenticatorData, string calldata clientDataJSON, bytes calldata signature) external',
+  'function executeAsRelayer(address target, uint256 value, bytes calldata data) external',
   'function nonce() external view returns (uint256)',
 ];
 
@@ -104,7 +105,8 @@ export class Executor {
     target: string,
     value: string,
     data: string,
-    signature: string
+    signature: string,
+    gasLimit?: bigint
   ): Promise<string> {
     const valueBigInt = BigInt(value);
     console.log('execute params:', {
@@ -114,22 +116,28 @@ export class Executor {
       value: valueBigInt.toString(),
       dataLength: data.length,
       signatureLength: signature.length,
+      gasLimit: gasLimit?.toString(),
     });
 
     const signer = this.getSigner(chainId);
     const wallet = new ethers.Contract(walletAddress, WALLET_ABI, signer);
 
-    const tx = await wallet.execute(target, valueBigInt, data, signature);
-    const receipt = await tx.wait();
+    try {
+      const overrides = gasLimit ? { gasLimit } : {};
+      const tx = await wallet.execute(target, valueBigInt, data, signature, overrides);
+      const receipt = await tx.wait();
 
-    console.log('execute receipt:', {
-      hash: receipt.hash,
-      status: receipt.status,
-      gasUsed: receipt.gasUsed.toString(),
-      logs: receipt.logs.length,
-    });
+      console.log('execute receipt:', {
+        hash: receipt.hash,
+        status: receipt.status,
+        gasUsed: receipt.gasUsed.toString(),
+        logs: receipt.logs.length,
+      });
 
-    return receipt.hash;
+      return receipt.hash;
+    } catch (err) {
+      throw this.enhanceError(err, 'execute', target, value);
+    }
   }
 
   async executeWithWebAuthn(
@@ -140,7 +148,8 @@ export class Executor {
     data: string,
     authenticatorData: string,
     clientDataJSON: string,
-    packedSignature: string
+    packedSignature: string,
+    gasLimit?: bigint
   ): Promise<string> {
     const valueBigInt = BigInt(value);
     console.log('executeWithWebAuthn params:', {
@@ -152,29 +161,101 @@ export class Executor {
       authenticatorDataLength: authenticatorData.length,
       clientDataJSONLength: clientDataJSON.length,
       signatureLength: packedSignature.length,
+      gasLimit: gasLimit?.toString(),
     });
 
     const signer = this.getSigner(chainId);
     const wallet = new ethers.Contract(walletAddress, WALLET_ABI, signer);
 
-    const tx = await wallet.executeWithWebAuthn(
-      target,
-      valueBigInt,
-      data,
-      authenticatorData,
-      clientDataJSON,
-      packedSignature
-    );
-    const receipt = await tx.wait();
+    try {
+      const overrides = gasLimit ? { gasLimit } : {};
+      const tx = await wallet.executeWithWebAuthn(
+        target,
+        valueBigInt,
+        data,
+        authenticatorData,
+        clientDataJSON,
+        packedSignature,
+        overrides
+      );
+      const receipt = await tx.wait();
 
-    console.log('executeWithWebAuthn receipt:', {
-      hash: receipt.hash,
-      status: receipt.status,
-      gasUsed: receipt.gasUsed.toString(),
-      logs: receipt.logs.length,
+      console.log('executeWithWebAuthn receipt:', {
+        hash: receipt.hash,
+        status: receipt.status,
+        gasUsed: receipt.gasUsed.toString(),
+        logs: receipt.logs.length,
+      });
+
+      return receipt.hash;
+    } catch (err) {
+      throw this.enhanceError(err, 'executeWithWebAuthn', target, value);
+    }
+  }
+
+  /** Execute a transaction using relayer authority only (no user signature).
+   *  Used for multi-step smart routing where the user already authorised Step 1. */
+  async executeAsRelayer(
+    chainId: number,
+    walletAddress: string,
+    target: string,
+    value: string,
+    data: string,
+    gasLimit?: bigint
+  ): Promise<string> {
+    const valueBigInt = BigInt(value);
+    console.log('executeAsRelayer params:', {
+      chainId,
+      walletAddress,
+      target,
+      value: valueBigInt.toString(),
+      dataLength: data.length,
+      gasLimit: gasLimit?.toString(),
     });
 
-    return receipt.hash;
+    const signer = this.getSigner(chainId);
+    const wallet = new ethers.Contract(walletAddress, WALLET_ABI, signer);
+
+    try {
+      const overrides = gasLimit ? { gasLimit } : {};
+      const tx = await wallet.executeAsRelayer(target, valueBigInt, data, overrides);
+      const receipt = await tx.wait();
+
+      console.log('executeAsRelayer receipt:', {
+        hash: receipt.hash,
+        status: receipt.status,
+        gasUsed: receipt.gasUsed.toString(),
+        logs: receipt.logs.length,
+      });
+
+      return receipt.hash;
+    } catch (err) {
+      throw this.enhanceError(err, 'executeAsRelayer', target, value);
+    }
+  }
+
+  /** Decode known wallet error selectors to human-readable messages */
+  private enhanceError(err: unknown, method: string, target: string, value: string): Error {
+    const raw = err instanceof Error ? err.message : String(err);
+
+    // Known custom error selectors from OneClickWallet.sol
+    const knownErrors: Record<string, string> = {
+      '0xacfdb444': 'ExecutionFailed — the inner call to the target contract reverted',
+      '0x8baa579f': 'InvalidSignature — P256 passkey verification failed',
+      '0x4578ddb8': 'OnlyRelayer — caller is not the authorized relayer',
+      '0x0dc149f0': 'AlreadyInitialized — wallet already set up',
+    };
+
+    for (const [selector, description] of Object.entries(knownErrors)) {
+      if (raw.includes(selector)) {
+        const detail = `${method} → ${description} (target: ${target}, value: ${value})`;
+        console.error(detail);
+        return new Error(detail);
+      }
+    }
+
+    console.error(`${method} failed:`, raw);
+    return err instanceof Error ? err : new Error(raw);
   }
 
   getProvider(chainId: number): ethers.JsonRpcProvider {
