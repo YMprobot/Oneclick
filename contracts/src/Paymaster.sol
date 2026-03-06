@@ -27,6 +27,7 @@ contract Paymaster {
     error OnlyOwner();
     error OnlyRelayer();
     error WithdrawFailed();
+    error InsufficientBalance();
 
     constructor(address _owner, address _relayer) {
         owner = _owner;
@@ -42,11 +43,12 @@ contract Paymaster {
     /// @param amount The amount to withdraw
     function withdraw(uint256 amount) external {
         if (msg.sender != owner) revert OnlyOwner();
+        if (amount > address(this).balance) revert InsufficientBalance();
+
+        emit Withdrawn(amount);
 
         (bool success, ) = owner.call{value: amount}("");
         if (!success) revert WithdrawFailed();
-
-        emit Withdrawn(amount);
     }
 
     /// @notice Sponsor a transaction through a user's wallet

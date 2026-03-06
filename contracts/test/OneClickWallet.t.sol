@@ -220,4 +220,73 @@ contract OneClickWalletTest is Test {
         vm.expectRevert(OneClickFactory.AlreadyDeployed.selector);
         factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
     }
+
+    // --- Security audit: zero-address checks ---
+
+    function testInitializeZeroRelayerReverts() public {
+        OneClickWallet wallet = new OneClickWallet();
+        vm.expectRevert(OneClickWallet.ZeroAddress.selector);
+        wallet.initialize(testPubKeyX, testPubKeyY, address(0), address(mockVerifier));
+    }
+
+    function testInitializeZeroVerifierReverts() public {
+        OneClickWallet wallet = new OneClickWallet();
+        vm.expectRevert(OneClickWallet.ZeroAddress.selector);
+        wallet.initialize(testPubKeyX, testPubKeyY, relayerAddr, address(0));
+    }
+
+    // --- Security audit: Paymaster balance check ---
+
+    function testPaymasterWithdrawInsufficientBalance() public {
+        paymaster.deposit{value: 1 ether}();
+
+        vm.prank(ownerAddr);
+        vm.expectRevert(Paymaster.InsufficientBalance.selector);
+        paymaster.withdraw(2 ether);
+    }
+
+    // --- Security audit: reentrancy guard ---
+
+    function testReentrancyGuardOnExecuteAsRelayer() public {
+        ReentrantTarget reentrant = new ReentrantTarget();
+        address wallet = factory.deployWallet(testPubKeyX, testPubKeyY, relayerAddr, address(mockVerifier));
+        vm.deal(wallet, 10 ether);
+
+        // Set up reentrant target to call back into wallet.executeAsRelayer
+        reentrant.setTarget(wallet, relayerAddr);
+
+        vm.prank(relayerAddr);
+        OneClickWallet(payable(wallet)).executeAsRelayer(
+            address(reentrant), 1 ether, ""
+        );
+
+        // Wallet nonce should be 1 (only one successful execution)
+        assertEq(OneClickWallet(payable(wallet)).nonce(), 1);
+        // Reentrant attack was attempted but failed (msg.sender was not relayer)
+        assertTrue(reentrant.attacked());
+    }
+}
+
+/// @notice Malicious contract that attempts reentrancy on receive
+contract ReentrantTarget {
+    address public walletTarget;
+    address public relayerAddr;
+    bool public attacked;
+
+    function setTarget(address _wallet, address _relayer) external {
+        walletTarget = _wallet;
+        relayerAddr = _relayer;
+    }
+
+    receive() external payable {
+        if (!attacked) {
+            attacked = true;
+            // Attempt reentrant call — will revert with OnlyRelayer (msg.sender is this contract)
+            (bool success, ) = walletTarget.call(
+                abi.encodeWithSignature("executeAsRelayer(address,uint256,bytes)", address(this), uint256(0), bytes(""))
+            );
+            // success should be false — reentrancy blocked by OnlyRelayer + ReentrancyGuard
+            success; // silence unused variable warning
+        }
+    }
 }

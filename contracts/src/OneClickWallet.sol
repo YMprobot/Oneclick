@@ -12,6 +12,7 @@ contract OneClickWallet {
     address public verifier;
     address public icmSync;
     bool private initialized;
+    bool private _locked;
 
     /// @notice Emitted when the wallet executes a transaction
     /// @param target The destination address
@@ -29,6 +30,8 @@ contract OneClickWallet {
     error OnlyICMSync();
     error InvalidSignature();
     error ExecutionFailed();
+    error ReentrancyGuard();
+    error ZeroAddress();
 
     /// @notice Initialize the wallet with owner's passkey and relayer
     /// @param _pubKeyX The X coordinate of the owner's P256 public key
@@ -42,6 +45,8 @@ contract OneClickWallet {
         address _verifier
     ) external {
         if (initialized) revert AlreadyInitialized();
+        if (_relayer == address(0)) revert ZeroAddress();
+        if (_verifier == address(0)) revert ZeroAddress();
 
         ownerPubKeyX = _pubKeyX;
         ownerPubKeyY = _pubKeyY;
@@ -62,6 +67,8 @@ contract OneClickWallet {
         bytes calldata signature
     ) external {
         if (msg.sender != relayer) revert OnlyRelayer();
+        if (_locked) revert ReentrancyGuard();
+        _locked = true;
 
         bytes32 messageHash = keccak256(
             abi.encodePacked(address(this), target, value, data, nonce)
@@ -84,6 +91,7 @@ contract OneClickWallet {
         if (!execSuccess) revert ExecutionFailed();
 
         emit Executed(target, value, nonce - 1);
+        _locked = false;
     }
 
     /// @notice Execute a transaction with full WebAuthn signature verification.
@@ -103,6 +111,8 @@ contract OneClickWallet {
         bytes calldata signature
     ) external {
         if (msg.sender != relayer) revert OnlyRelayer();
+        if (_locked) revert ReentrancyGuard();
+        _locked = true;
 
         // Reconstruct the message that WebAuthn signed:
         // message = SHA-256(authenticatorData || SHA-256(clientDataJSON))
@@ -118,6 +128,7 @@ contract OneClickWallet {
         if (!execSuccess) revert ExecutionFailed();
 
         emit Executed(target, value, nonce - 1);
+        _locked = false;
     }
 
     /// @notice Execute a transaction using relayer authority only (no user signature).
@@ -132,6 +143,8 @@ contract OneClickWallet {
         bytes calldata data
     ) external {
         if (msg.sender != relayer) revert OnlyRelayer();
+        if (_locked) revert ReentrancyGuard();
+        _locked = true;
 
         nonce++;
 
@@ -139,6 +152,7 @@ contract OneClickWallet {
         if (!execSuccess) revert ExecutionFailed();
 
         emit Executed(target, value, nonce - 1);
+        _locked = false;
     }
 
     /// @dev Verify a P256 signature against the owner's public key
