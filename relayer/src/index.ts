@@ -14,9 +14,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Unified contract addresses (same deployer nonce on all chains)
-const factoryAddress = process.env.FACTORY_ADDRESS || '0x0000000000000000000000000000000000000000';
-const paymasterAddress = process.env.PAYMASTER_ADDRESS || '0x0000000000000000000000000000000000000000';
+// Deterministic contract addresses — same on all chains (deployed via CREATE2 + Nick's Factory)
+const factoryAddress = process.env.FACTORY_ADDRESS || '0x7ECeA257d8Fe653CA6C24CE744D589784DE5B188';
+const paymasterAddress = process.env.PAYMASTER_ADDRESS || '0xFe1Dd7F4A8DbD7e9C92Eb7c79c9331E3f8cD494E';
 
 // Fuji C-Chain (testnet)
 registerChain({

@@ -1,7 +1,8 @@
 {
   "chainId": 4337,
-  "factory": "0xA8aEE38536738cc54b1c5bfd9BB0F850Ca9B0572",
-  "paymaster": "0x27Ae2cb737041430e5d3B3dA7652cB6F1C6c9174",
+  "factory": "0x7ECeA257d8Fe653CA6C24CE744D589784DE5B188",
+  "paymaster": "0xFe1Dd7F4A8DbD7e9C92Eb7c79c9331E3f8cD494E",
   "deployer": "0x17523Fce08784bE4135ab70693746BE0Ddd10302",
-  "blockNumber": 8181104
+  "method": "CREATE2 via Nick's Factory (0x4e59b44847b379578588920cA78FbF26c0B4956C)",
+  "note": "Deterministic addresses — same on all chains"
 }
