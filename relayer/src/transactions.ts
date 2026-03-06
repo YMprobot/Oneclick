@@ -1,3 +1,9 @@
+export interface SmartRouteStep {
+  type: 'swap' | 'transfer' | 'execute';
+  description: string;
+  hash: string;
+}
+
 export interface TransactionRecord {
   id: string;
   walletAddress: string;
@@ -10,6 +16,8 @@ export interface TransactionRecord {
   hash: string;
   status: 'confirmed' | 'failed';
   timestamp: number;
+  txType?: 'send' | 'swap' | 'smart-swap-send';
+  smartRoute?: SmartRouteStep[];
 }
 
 const transactions: Map<string, TransactionRecord[]> = new Map();

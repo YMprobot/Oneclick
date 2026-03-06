@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { signChallenge } from '@/lib/webauthn';
 import { RELAYER_URL } from '@/lib/constants';
-import { avaxToWei, fromSmallestUnit, toSmallestUnit, generateFakeTxHash } from '@/lib/utils';
+import { avaxToWei, fromSmallestUnit, toSmallestUnit } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { TransactionStatus } from '@/components/TransactionStatus';
 
@@ -84,7 +84,6 @@ export default function SwapPage() {
   const [status, setStatus] = useState<FlowStatus>('idle');
   const [txHash, setTxHash] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const currentChain = chains.find((c) => c.chainId === chainId);
   const swapTokens = currentChain?.swap?.tokens || [];
@@ -227,15 +226,10 @@ export default function SwapPage() {
     const fromDecimals = isFromNative ? 18 : (fromTokenConfig?.decimals || 6);
     const amountRaw = isFromNative ? avaxToWei(amount) : toSmallestUnit(amount, fromDecimals);
 
-    // Step A: Prepare — get a challenge to sign
+    // Step A: Prepare — get challenge from relayer
     setStatus('preparing');
-    setIsDemoMode(false);
 
-    // For swaps, we use the same prepare-transaction flow to get a challenge
-    // The relayer needs to know this is a swap, so we prepare against the router
     let challengeHex: string;
-    let demoMode = false;
-
     try {
       const res = await fetch(`${RELAYER_URL}/prepare-transaction`, {
         method: 'POST',
@@ -246,18 +240,25 @@ export default function SwapPage() {
           value: isFromNative ? amountRaw : '0',
           data: '0x',
           chainId,
+          pubKeyX: wallet.pubKeyX,
+          pubKeyY: wallet.pubKeyY,
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to prepare');
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.error || `Relayer error (${res.status})`);
+      }
       const data = await res.json();
       challengeHex = data.challenge;
-    } catch {
-      demoMode = true;
-      setIsDemoMode(true);
-      challengeHex = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
+    } catch (err) {
+      const isNetworkError = err instanceof TypeError && err.message.includes('fetch');
+      const msg = isNetworkError
+        ? 'Relayer unavailable — make sure the relayer is running'
+        : err instanceof Error ? err.message : 'Failed to prepare swap';
+      setErrorMessage(msg);
+      setStatus('error');
+      return;
     }
 
     // Step B: Sign with passkey
@@ -273,19 +274,14 @@ export default function SwapPage() {
       // Step C: Execute swap
       setStatus('submitting');
 
-      if (demoMode) {
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        setTxHash(generateFakeTxHash());
-        setStatus('success');
-        return;
-      }
-
       const execRes = await fetch(`${RELAYER_URL}/swap/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chainId,
           walletAddress: wallet.address,
+          pubKeyX: wallet.pubKeyX,
+          pubKeyY: wallet.pubKeyY,
           fromToken,
           toToken,
           amount: amountRaw,
@@ -306,7 +302,6 @@ export default function SwapPage() {
 
       const result = await execRes.json();
       setTxHash(result.txHash);
-      setIsDemoMode(false);
       setStatus('success');
     } catch (err) {
       console.error('Swap failed:', err);
@@ -322,7 +317,6 @@ export default function SwapPage() {
     setStatus('idle');
     setTxHash('');
     setErrorMessage('');
-    setIsDemoMode(false);
     fetchBalances();
   }
 
@@ -539,12 +533,6 @@ export default function SwapPage() {
                 errorMessage={errorMessage}
                 explorerUrl={currentChain?.explorerUrl}
               />
-
-              {isDemoMode && status === 'success' && (
-                <p className="text-center text-xs text-yellow-400">
-                  Demo mode — swap simulated
-                </p>
-              )}
 
               {(status === 'success' || status === 'error') && (
                 <div className="flex gap-3">

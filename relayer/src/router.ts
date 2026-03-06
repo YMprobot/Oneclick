@@ -3,6 +3,7 @@ import { ethers } from 'ethers';
 import { Executor } from './executor.js';
 import { getAllChains, getChain, getDefaultChainId } from './chains.js';
 import { addTransaction, getTransactions } from './transactions.js';
+import type { SmartRouteStep } from './transactions.js';
 import { storeWallet, getWalletKeys } from './walletStore.js';
 import { getTokensForChain } from './tokens.js';
 import {
@@ -11,12 +12,38 @@ import {
   buildApproveCalldata,
   ERC20_ABI as SWAP_ERC20_ABI,
 } from './swap.js';
+import { planTransaction } from './smartRouter.js';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
   'function transfer(address to, uint256 amount) returns (bool)',
   'function approve(address spender, uint256 amount) returns (bool)',
 ];
+
+/**
+ * Resolve wallet public keys from the wallet store, falling back to
+ * pubKeyX/pubKeyY provided in the request body.  When found via the
+ * fallback, the keys are persisted so subsequent requests work too.
+ */
+function resolveWalletKeys(
+  requestedAddress: string,
+  bodyPubKeyX?: string,
+  bodyPubKeyY?: string
+): { pubKeyX: string; pubKeyY: string } | undefined {
+  const existing = getWalletKeys(requestedAddress);
+  if (existing) return existing;
+
+  // Fallback: client sent the keys directly
+  if (bodyPubKeyX && bodyPubKeyY) {
+    const x = bodyPubKeyX.startsWith('0x') ? bodyPubKeyX : '0x' + bodyPubKeyX;
+    const y = bodyPubKeyY.startsWith('0x') ? bodyPubKeyY : '0x' + bodyPubKeyY;
+    storeWallet(requestedAddress, x, y);
+    console.log(`  re-registered wallet keys for ${requestedAddress} from request body`);
+    return { pubKeyX: x, pubKeyY: y };
+  }
+
+  return undefined;
+}
 
 export function createRouter(executor: Executor): Router {
   const router = Router();
@@ -56,17 +83,17 @@ export function createRouter(executor: Executor): Router {
   // POST /prepare-transaction — build challenge hash for signing
   router.post('/prepare-transaction', async (req, res) => {
     try {
-      const { walletAddress: requestedAddress, target, value, data, chainId, tokenAddress } = req.body;
+      const { walletAddress: requestedAddress, target, value, data, chainId, tokenAddress, pubKeyX, pubKeyY } = req.body;
 
       console.log(`POST /prepare-transaction — wallet: ${requestedAddress}, target: ${target}, value: ${value}, chainId: ${chainId}, token: ${tokenAddress || 'native'}`);
 
       if (!requestedAddress || !target || value === undefined || !chainId) {
-        res.status(400).json({ error: 'Missing required fields' });
+        res.status(400).json({ error: 'Missing required fields: walletAddress, target, value, chainId' });
         return;
       }
 
-      // Resolve the correct wallet address for the target chain
-      const keys = getWalletKeys(requestedAddress);
+      // Resolve wallet keys from store or request body
+      const keys = resolveWalletKeys(requestedAddress, pubKeyX, pubKeyY);
       if (!keys) {
         res.status(400).json({ error: 'Wallet keys not found. Please reconnect.' });
         return;
@@ -109,11 +136,12 @@ export function createRouter(executor: Executor): Router {
     }
   });
 
-  // POST /execute-transaction — submit signed transaction
+  // POST /execute-transaction — submit signed transaction (with smart routing)
   router.post('/execute-transaction', async (req, res) => {
     try {
-      const { walletAddress: requestedAddress, target, value, data, chainId, signature, tokenAddress } = req.body;
+      const { walletAddress: requestedAddress, target, value, data, chainId, signature, tokenAddress, pubKeyX, pubKeyY } = req.body;
 
+      console.log('=== EXECUTE-TRANSACTION CALLED ===', JSON.stringify(req.body));
       console.log(`POST /execute-transaction — wallet: ${requestedAddress}, target: ${target}, value: ${value}, chainId: ${chainId}, token: ${tokenAddress || 'native'}`);
 
       if (!requestedAddress || !target || value === undefined || !chainId || !signature) {
@@ -121,8 +149,8 @@ export function createRouter(executor: Executor): Router {
         return;
       }
 
-      // Resolve the correct wallet address for the target chain
-      const keys = getWalletKeys(requestedAddress);
+      // Resolve wallet keys from store or request body
+      const keys = resolveWalletKeys(requestedAddress, pubKeyX, pubKeyY);
       if (!keys) {
         res.status(400).json({ error: 'Wallet keys not found. Please reconnect.' });
         return;
@@ -160,31 +188,114 @@ export function createRouter(executor: Executor): Router {
 
       console.log(`  path: ${authenticatorData ? 'WebAuthn' : 'Legacy P256'}, sig length: ${packedSignature.length}`);
 
-      let hash: string;
+      const chain = getChain(chainId);
 
-      if (authenticatorData && clientDataJSON) {
-        hash = await executor.executeWithWebAuthn(
-          chainId,
-          walletAddress,
-          actualTarget,
-          actualValue,
-          actualData,
-          authenticatorData,
-          clientDataJSON,
-          packedSignature
+      // --- Smart routing: check if auto-swap is needed ---
+      const provider = executor.getProvider(chainId);
+      const plan = await planTransaction(
+        provider,
+        walletAddress,
+        actualTarget,
+        actualValue,
+        actualData,
+        chain!
+      );
+
+      const smartRouteSteps: SmartRouteStep[] = [];
+      let finalHash: string;
+
+      if (plan.needsSwap && plan.swapDetails && chain?.swap) {
+        console.log(`  smart route: auto-swap ${plan.swapDetails.fromToken} -> ${plan.swapDetails.toToken}`);
+
+        // Step 1: Execute the swap (AVAX -> Token)
+        const swapStep = plan.steps.find((s) => s.type === 'swap');
+        if (!swapStep) {
+          res.status(500).json({ error: 'Smart route: swap step missing' });
+          return;
+        }
+
+        const { routerAddress, wavaxAddress, defaultBinStep } = chain.swap;
+        const tokenConfig = chain.swap.tokens.find(
+          (t) => t.symbol === plan.swapDetails!.toToken
         );
+        if (!tokenConfig) {
+          res.status(400).json({ error: `Token ${plan.swapDetails.toToken} not supported for auto-swap` });
+          return;
+        }
+
+        const deadline = Math.floor(Date.now() / 1000) + 1200;
+        const swapCalldata = buildSwapNativeForTokensCalldata(
+          0n, // testnet: accept any output
+          defaultBinStep,
+          wavaxAddress,
+          tokenConfig.address,
+          walletAddress,
+          deadline
+        );
+
+        const swapValue = swapStep.value;
+
+        let swapHash: string;
+        if (authenticatorData && clientDataJSON) {
+          swapHash = await executor.executeWithWebAuthn(
+            chainId, walletAddress, routerAddress, swapValue, swapCalldata,
+            authenticatorData, clientDataJSON, packedSignature
+          );
+        } else {
+          swapHash = await executor.executeTransaction(
+            chainId, walletAddress, routerAddress, swapValue, swapCalldata, packedSignature
+          );
+        }
+        console.log(`  swap step confirmed: ${swapHash}`);
+        smartRouteSteps.push({
+          type: 'swap',
+          description: swapStep.description,
+          hash: swapHash,
+        });
+
+        // Step 2: Execute the original transfer
+        const transferStep = plan.steps.find((s) => s.type === 'execute');
+        if (!transferStep) {
+          res.status(500).json({ error: 'Smart route: transfer step missing' });
+          return;
+        }
+
+        let transferHash: string;
+        if (authenticatorData && clientDataJSON) {
+          transferHash = await executor.executeWithWebAuthn(
+            chainId, walletAddress, transferStep.target, transferStep.value, transferStep.data,
+            authenticatorData, clientDataJSON, packedSignature
+          );
+        } else {
+          transferHash = await executor.executeTransaction(
+            chainId, walletAddress, transferStep.target, transferStep.value, transferStep.data,
+            packedSignature
+          );
+        }
+        console.log(`  transfer step confirmed: ${transferHash}`);
+        smartRouteSteps.push({
+          type: 'transfer',
+          description: transferStep.description,
+          hash: transferHash,
+        });
+
+        finalHash = transferHash;
       } else {
-        hash = await executor.executeTransaction(
-          chainId,
-          walletAddress,
-          actualTarget,
-          actualValue,
-          actualData,
-          packedSignature
-        );
+        // No swap needed — execute directly as before
+        if (authenticatorData && clientDataJSON) {
+          finalHash = await executor.executeWithWebAuthn(
+            chainId, walletAddress, actualTarget, actualValue, actualData,
+            authenticatorData, clientDataJSON, packedSignature
+          );
+        } else {
+          finalHash = await executor.executeTransaction(
+            chainId, walletAddress, actualTarget, actualValue, actualData, packedSignature
+          );
+        }
       }
 
-      const chain = getChain(chainId);
+      const txType = plan.needsSwap ? 'smart-swap-send' as const : 'send' as const;
+
       addTransaction({
         id: crypto.randomUUID(),
         walletAddress,
@@ -194,13 +305,23 @@ export function createRouter(executor: Executor): Router {
         chainName: chain?.name || `Chain ${chainId}`,
         nativeSymbol: chain?.nativeSymbol || 'AVAX',
         explorerUrl: chain?.explorerUrl || '',
-        hash,
+        hash: finalHash,
         status: 'confirmed',
         timestamp: Date.now(),
+        txType,
+        smartRoute: smartRouteSteps.length > 0 ? smartRouteSteps : undefined,
       });
 
-      console.log(`  confirmed: ${hash}`);
-      res.json({ hash, chainId, status: 'confirmed' });
+      console.log(`  confirmed: ${finalHash} (${txType})`);
+      res.json({
+        hash: finalHash,
+        chainId,
+        status: 'confirmed',
+        plan: {
+          needsSwap: plan.needsSwap,
+          steps: smartRouteSteps,
+        },
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error(`POST /execute-transaction failed: ${message}`);
@@ -340,6 +461,69 @@ export function createRouter(executor: Executor): Router {
     }
   });
 
+  // POST /transaction/plan — preview transaction plan (detect auto-swap needs)
+  router.post('/transaction/plan', async (req, res) => {
+    try {
+      const { walletAddress: requestedAddress, target, value, data, chainId, tokenAddress, pubKeyX, pubKeyY } = req.body;
+
+      console.log(`POST /transaction/plan — wallet: ${requestedAddress}, target: ${target}, chainId: ${chainId}, token: ${tokenAddress || 'native'}`);
+
+      if (!requestedAddress || !target || value === undefined || !chainId) {
+        res.status(400).json({ error: 'Missing required fields: walletAddress, target, value, chainId' });
+        return;
+      }
+
+      const chain = getChain(chainId);
+      if (!chain) {
+        res.status(400).json({ error: `Chain ${chainId} not registered` });
+        return;
+      }
+
+      // Resolve wallet keys from store or request body
+      const keys = resolveWalletKeys(requestedAddress, pubKeyX, pubKeyY);
+      if (!keys) {
+        res.status(400).json({ error: 'Wallet keys not found. Please reconnect.' });
+        return;
+      }
+
+      const walletAddress = await executor.getWalletAddress(chainId, keys.pubKeyX, keys.pubKeyY);
+
+      // Build the actual target/value/data (same logic as prepare-transaction)
+      let actualTarget: string;
+      let actualValue: string;
+      let actualData: string;
+
+      if (tokenAddress) {
+        const iface = new ethers.Interface(ERC20_ABI);
+        const transferData = iface.encodeFunctionData('transfer', [target, BigInt(value)]);
+        actualTarget = tokenAddress;
+        actualValue = '0';
+        actualData = transferData;
+      } else {
+        actualTarget = target;
+        actualValue = value;
+        actualData = data || '0x';
+      }
+
+      const provider = executor.getProvider(chainId);
+      const plan = await planTransaction(
+        provider,
+        walletAddress,
+        actualTarget,
+        actualValue,
+        actualData,
+        chain
+      );
+
+      console.log(`  plan: needsSwap=${plan.needsSwap}, steps=${plan.steps.length}`);
+      res.json(plan);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`POST /transaction/plan failed: ${message}`);
+      res.status(500).json({ error: message });
+    }
+  });
+
   // POST /swap/quote — get estimated swap output
   router.post('/swap/quote', async (req, res) => {
     try {
@@ -434,7 +618,7 @@ export function createRouter(executor: Executor): Router {
   // POST /swap/execute — execute a swap through the wallet
   router.post('/swap/execute', async (req, res) => {
     try {
-      const { chainId, walletAddress: requestedAddress, fromToken, toToken, amount, slippage, signature } = req.body;
+      const { chainId, walletAddress: requestedAddress, fromToken, toToken, amount, slippage, signature, pubKeyX, pubKeyY } = req.body;
 
       console.log(`POST /swap/execute — wallet: ${requestedAddress}, ${fromToken} -> ${toToken}, amount: ${amount}, chain: ${chainId}`);
 
@@ -453,7 +637,7 @@ export function createRouter(executor: Executor): Router {
         return;
       }
 
-      const keys = getWalletKeys(requestedAddress);
+      const keys = resolveWalletKeys(requestedAddress, pubKeyX, pubKeyY);
       if (!keys) {
         res.status(400).json({ error: 'Wallet keys not found. Please reconnect.' });
         return;

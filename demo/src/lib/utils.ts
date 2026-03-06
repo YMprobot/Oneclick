@@ -33,10 +33,3 @@ export function fromSmallestUnit(raw: string, decimals: number): string {
   const trimmed = decimal.replace(/0+$/, '').padEnd(Math.min(2, decimals), '0');
   return `${whole}.${trimmed}`;
 }
-
-export function generateFakeTxHash(): string {
-  const bytes = new Array(32)
-    .fill(0)
-    .map(() => Math.floor(Math.random() * 256).toString(16).padStart(2, '0'));
-  return '0x' + bytes.join('');
-}

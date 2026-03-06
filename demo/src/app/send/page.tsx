@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { signChallenge } from '@/lib/webauthn';
 import { RELAYER_URL } from '@/lib/constants';
-import { avaxToWei, toSmallestUnit, fromSmallestUnit, generateFakeTxHash } from '@/lib/utils';
+import { avaxToWei, toSmallestUnit, fromSmallestUnit } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { TransactionStatus } from '@/components/TransactionStatus';
 
-type FlowStatus = 'idle' | 'preparing' | 'signing' | 'submitting' | 'success' | 'error';
+type FlowStatus = 'idle' | 'planning' | 'preparing' | 'signing' | 'swapping' | 'submitting' | 'success' | 'error';
 
 interface ChainOption {
   name: string;
@@ -23,6 +23,29 @@ interface TokenOption {
   name: string;
   address: string;
   decimals: number;
+}
+
+interface SmartRouteStep {
+  type: string;
+  description: string;
+  hash?: string;
+}
+
+interface TransactionPlan {
+  needsSwap: boolean;
+  steps: Array<{
+    type: string;
+    target: string;
+    value: string;
+    data: string;
+    description: string;
+  }>;
+  swapDetails?: {
+    fromToken: string;
+    toToken: string;
+    estimatedAmountIn: string;
+    estimatedAmountOut: string;
+  };
 }
 
 const DEFAULT_CHAINS: ChainOption[] = [
@@ -45,7 +68,7 @@ export default function SendPage() {
   const [chains, setChains] = useState<ChainOption[]>(DEFAULT_CHAINS);
 
   // Token selection
-  const [selectedToken, setSelectedToken] = useState<'native' | string>('native'); // 'native' or token symbol
+  const [selectedToken, setSelectedToken] = useState<'native' | string>('native');
   const [chainTokens, setChainTokens] = useState<TokenOption[]>([]);
   const [tokenBalance, setTokenBalance] = useState<string | null>(null);
   const [isLoadingTokenBalance, setIsLoadingTokenBalance] = useState(false);
@@ -53,12 +76,16 @@ export default function SendPage() {
   const [status, setStatus] = useState<FlowStatus>('idle');
   const [txHash, setTxHash] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   const [toError, setToError] = useState('');
   const [amountError, setAmountError] = useState('');
   const [availableBalance, setAvailableBalance] = useState<string | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+
+  // Smart routing state
+  const [plan, setPlan] = useState<TransactionPlan | null>(null);
+  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
+  const [routeSteps, setRouteSteps] = useState<SmartRouteStep[]>([]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -87,6 +114,7 @@ export default function SendPage() {
     setSelectedToken('native');
     setChainTokens([]);
     setTokenBalance(null);
+    setPlan(null);
 
     fetch(`${RELAYER_URL}/tokens?chainId=${chainId}`)
       .then((res) => (res.ok ? res.json() : []))
@@ -147,6 +175,59 @@ export default function SendPage() {
       .finally(() => setIsLoadingTokenBalance(false));
   }, [selectedToken, wallet?.address, chainId]);
 
+  // Fetch transaction plan when form changes (debounced)
+  useEffect(() => {
+    if (!wallet?.address || !isValidAddress(to) || !amount || selectedToken === 'native') {
+      setPlan(null);
+      return;
+    }
+
+    const num = parseFloat(amount);
+    if (isNaN(num) || num <= 0) {
+      setPlan(null);
+      return;
+    }
+
+    const tokenConfig = chainTokens.find((t) => t.symbol === selectedToken);
+    if (!tokenConfig) {
+      setPlan(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsLoadingPlan(true);
+      try {
+        const sendValue = toSmallestUnit(amount, tokenConfig.decimals);
+        const res = await fetch(`${RELAYER_URL}/transaction/plan`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: wallet.address,
+            target: to,
+            value: sendValue,
+            data: '0x',
+            chainId,
+            tokenAddress: tokenConfig.address,
+            pubKeyX: wallet.pubKeyX,
+            pubKeyY: wallet.pubKeyY,
+          }),
+        });
+        if (res.ok) {
+          const planData: TransactionPlan = await res.json();
+          setPlan(planData);
+        } else {
+          setPlan(null);
+        }
+      } catch {
+        setPlan(null);
+      } finally {
+        setIsLoadingPlan(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [wallet?.address, to, amount, selectedToken, chainId, chainTokens]);
+
   const currentChain = chains.find((c) => c.chainId === chainId);
   const currentTokenConfig = chainTokens.find((t) => t.symbol === selectedToken);
   const isNative = selectedToken === 'native';
@@ -202,11 +283,12 @@ export default function SendPage() {
     setStatus('idle');
     setTxHash('');
     setErrorMessage('');
-    setIsDemoMode(false);
     setToError('');
     setAmountError('');
     setAvailableBalance(null);
     setTokenBalance(null);
+    setPlan(null);
+    setRouteSteps([]);
   }
 
   async function handleSend() {
@@ -223,10 +305,9 @@ export default function SendPage() {
       tokenAddress = currentTokenConfig?.address;
     }
 
-    // Step A: Prepare
+    // Step A: Prepare — get challenge from relayer
     setStatus('preparing');
-    setIsDemoMode(false);
-    let demoMode = false;
+    setRouteSteps([]);
 
     let challengeHex: string;
     try {
@@ -240,18 +321,25 @@ export default function SendPage() {
           data: '0x',
           chainId,
           tokenAddress,
+          pubKeyX: wallet.pubKeyX,
+          pubKeyY: wallet.pubKeyY,
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to prepare transaction');
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => null);
+        throw new Error(errorBody?.error || `Relayer error (${res.status})`);
+      }
       const data = await res.json();
       challengeHex = data.challenge;
-    } catch {
-      demoMode = true;
-      setIsDemoMode(true);
-      challengeHex = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
+    } catch (err) {
+      const isNetworkError = err instanceof TypeError && err.message.includes('fetch');
+      const msg = isNetworkError
+        ? 'Relayer unavailable — make sure the relayer is running'
+        : err instanceof Error ? err.message : 'Failed to prepare transaction';
+      setErrorMessage(msg);
+      setStatus('error');
+      return;
     }
 
     // Step B: Sign with passkey
@@ -264,14 +352,11 @@ export default function SendPage() {
 
       const signature = await signChallenge(wallet.credentialId, challengeBytes);
 
-      // Step C: Submit
-      setStatus('submitting');
-
-      if (demoMode) {
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        setTxHash(generateFakeTxHash());
-        setStatus('success');
-        return;
+      // Step C: Submit (with smart routing)
+      if (plan?.needsSwap) {
+        setStatus('swapping');
+      } else {
+        setStatus('submitting');
       }
 
       const execRes = await fetch(`${RELAYER_URL}/execute-transaction`, {
@@ -284,6 +369,8 @@ export default function SendPage() {
           data: '0x',
           chainId,
           tokenAddress,
+          pubKeyX: wallet.pubKeyX,
+          pubKeyY: wallet.pubKeyY,
           signature: {
             r: signature.r,
             s: signature.s,
@@ -299,7 +386,12 @@ export default function SendPage() {
       }
       const result = await execRes.json();
       setTxHash(result.hash);
-      setIsDemoMode(false);
+
+      // Store smart route steps from response
+      if (result.plan?.steps?.length > 0) {
+        setRouteSteps(result.plan.steps);
+      }
+
       setStatus('success');
     } catch (err) {
       console.error('Transaction failed:', err);
@@ -409,6 +501,47 @@ export default function SendPage() {
                 </select>
               </div>
 
+              {/* Smart Route Preview */}
+              {plan?.needsSwap && plan.swapDetails && (
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs font-semibold text-blue-400">
+                      Smart Route
+                    </span>
+                  </div>
+                  <p className="mb-3 text-sm text-gray-300">
+                    Insufficient {plan.swapDetails.toToken} balance. OneClick will automatically:
+                  </p>
+                  <div className="space-y-2">
+                    {plan.steps.map((step, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          step.type === 'swap'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {i + 1}
+                        </span>
+                        <span className="text-sm text-gray-300">{step.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs text-gray-500">
+                    You sign once — OneClick handles the rest
+                  </p>
+                </div>
+              )}
+
+              {isLoadingPlan && !isNative && (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Checking route...
+                </div>
+              )}
+
               {/* Submit */}
               <button
                 onClick={handleSend}
@@ -419,24 +552,50 @@ export default function SendPage() {
                   <path d="M7 10V8a5 5 0 0110 0v2" />
                   <rect x="5" y="10" width="14" height="11" rx="2" />
                 </svg>
-                Sign &amp; Send
+                {plan?.needsSwap ? 'Sign & Smart Send' : 'Sign & Send'}
               </button>
             </div>
           )}
 
           {status !== 'idle' && (
             <div className="space-y-6">
-              <TransactionStatus
-                status={status}
-                txHash={txHash}
-                errorMessage={errorMessage}
-                explorerUrl={chains.find((c) => c.chainId === chainId)?.explorerUrl}
-              />
+              {/* Multi-step progress for smart routing */}
+              {plan?.needsSwap && plan.steps.length > 0 ? (
+                <SmartRouteProgress
+                  steps={plan.steps.map((s) => s.description)}
+                  currentStatus={status}
+                  completedSteps={routeSteps}
+                  explorerUrl={chains.find((c) => c.chainId === chainId)?.explorerUrl}
+                />
+              ) : (
+                <TransactionStatus
+                  status={status === 'swapping' ? 'submitting' : status === 'planning' ? 'preparing' : status}
+                  txHash={txHash}
+                  errorMessage={errorMessage}
+                  explorerUrl={chains.find((c) => c.chainId === chainId)?.explorerUrl}
+                />
+              )}
 
-              {isDemoMode && status === 'success' && (
-                <p className="text-center text-xs text-yellow-400">
-                  Demo mode — transaction simulated
-                </p>
+              {/* Show all tx hashes on success */}
+              {status === 'success' && routeSteps.length > 0 && !plan?.needsSwap && (
+                <div className="rounded-xl border border-gray-800 bg-gray-800/50 p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase text-gray-400">Transaction Details</p>
+                  {routeSteps.map((step, i) => (
+                    <div key={i} className="flex items-center justify-between py-1.5">
+                      <span className="text-sm text-gray-300">{step.description}</span>
+                      {step.hash && (
+                        <a
+                          href={`${chains.find((c) => c.chainId === chainId)?.explorerUrl || ''}/tx/${step.hash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-xs text-red-400 hover:text-red-300"
+                        >
+                          {step.hash.slice(0, 8)}...{step.hash.slice(-6)}
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
 
               {(status === 'success' || status === 'error') && (
@@ -474,6 +633,130 @@ export default function SendPage() {
           </button>
         )}
       </main>
+    </div>
+  );
+}
+
+/** Multi-step progress component for smart routing */
+function SmartRouteProgress({
+  steps,
+  currentStatus,
+  completedSteps,
+  explorerUrl,
+}: {
+  steps: string[];
+  currentStatus: FlowStatus;
+  completedSteps: SmartRouteStep[];
+  explorerUrl?: string;
+}) {
+  const isSwapping = currentStatus === 'swapping';
+  const isSubmitting = currentStatus === 'submitting';
+  const isSuccess = currentStatus === 'success';
+  const isError = currentStatus === 'error';
+  const isSigning = currentStatus === 'signing';
+  const isPreparing = currentStatus === 'preparing';
+
+  return (
+    <div className="space-y-4">
+      {isPreparing && (
+        <StatusMessage>Preparing smart transaction...</StatusMessage>
+      )}
+      {isSigning && (
+        <StatusMessage>Confirm with fingerprint...</StatusMessage>
+      )}
+
+      {(isSwapping || isSubmitting || isSuccess || isError) && (
+        <div className="space-y-3">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-xs font-semibold text-blue-400">
+              Smart Route
+            </span>
+            {isSuccess && (
+              <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs font-semibold text-green-400">
+                Complete
+              </span>
+            )}
+          </div>
+
+          {steps.map((description, i) => {
+            const completed = completedSteps[i]?.hash;
+            const isActive = !completed && (
+              (i === 0 && isSwapping) ||
+              (i === 1 && isSubmitting) ||
+              (i === completedSteps.length && (isSwapping || isSubmitting))
+            );
+
+            return (
+              <div
+                key={i}
+                className={`flex items-center gap-3 rounded-xl border p-3 transition-all ${
+                  completed
+                    ? 'border-green-500/20 bg-green-500/5'
+                    : isActive
+                      ? 'border-red-500/30 bg-red-500/5'
+                      : 'border-gray-800 bg-gray-900'
+                }`}
+              >
+                <div className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                  completed
+                    ? 'bg-green-500/20 text-green-400'
+                    : isActive
+                      ? 'bg-red-500 text-white'
+                      : 'bg-gray-800 text-gray-500'
+                }`}>
+                  {completed ? '✓' : isActive ? (
+                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (i + 1)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm ${completed ? 'text-green-400' : isActive ? 'text-white' : 'text-gray-500'}`}>
+                    {description}
+                  </p>
+                  {completed && explorerUrl && (
+                    <a
+                      href={`${explorerUrl}/tx/${completedSteps[i].hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-red-400 hover:text-red-300"
+                    >
+                      {completedSteps[i].hash!.slice(0, 10)}...{completedSteps[i].hash!.slice(-8)}
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {isSuccess && !completedSteps.length && (
+        <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
+          <div className="mb-3 text-4xl">✓</div>
+          <p className="text-lg font-semibold text-green-400">Transaction confirmed!</p>
+        </div>
+      )}
+
+      {isError && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+          <div className="mb-3 text-4xl">✕</div>
+          <p className="text-sm text-red-400">Smart route failed. Please try again.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusMessage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-center gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-300">
+      <svg className="h-5 w-5 animate-spin text-red-500" viewBox="0 0 24 24" fill="none">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      </svg>
+      {children}
     </div>
   );
 }

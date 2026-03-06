@@ -1,3 +1,9 @@
+interface SmartRouteStep {
+  type: 'swap' | 'transfer' | 'execute';
+  description: string;
+  hash: string;
+}
+
 interface TransactionRecord {
   id: string;
   walletAddress: string;
@@ -10,6 +16,8 @@ interface TransactionRecord {
   hash: string;
   status: 'confirmed' | 'failed';
   timestamp: number;
+  txType?: 'send' | 'swap' | 'smart-swap-send';
+  smartRoute?: SmartRouteStep[];
 }
 
 interface TransactionListProps {
@@ -51,45 +59,81 @@ export function TransactionList({ transactions }: TransactionListProps) {
 
   return (
     <div className="divide-y divide-gray-800">
-      {transactions.map((tx) => (
-        <div key={tx.id} className="flex items-center justify-between gap-3 px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-300">
-                <span
-                  className={`inline-block h-1.5 w-1.5 rounded-full ${
-                    tx.status === 'confirmed' ? 'bg-green-400' : 'bg-red-400'
-                  }`}
-                />
-                {tx.chainName}
-              </span>
+      {transactions.map((tx) => {
+        const isSmartRoute = tx.txType === 'smart-swap-send';
+
+        return (
+          <div key={tx.id} className="px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-300">
+                    <span
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${
+                        tx.status === 'confirmed' ? 'bg-green-400' : 'bg-red-400'
+                      }`}
+                    />
+                    {tx.chainName}
+                  </span>
+                  {isSmartRoute && (
+                    <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-400">
+                      Smart Route
+                    </span>
+                  )}
+                </div>
+                <p className="truncate text-sm">
+                  <span className="font-medium text-white">
+                    {isSmartRoute ? 'Smart Swap + Send' : `Sent ${formatAmount(tx.value)} ${tx.nativeSymbol}`}
+                  </span>{' '}
+                  <span className="font-mono text-gray-400">
+                    to {truncateAddress(tx.target)}
+                  </span>
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="whitespace-nowrap text-xs text-gray-500">
+                  {timeAgo(tx.timestamp)}
+                </span>
+                {tx.explorerUrl && (
+                  <a
+                    href={explorerTxUrl(tx.explorerUrl, tx.hash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="whitespace-nowrap text-xs text-red-400 transition-colors hover:text-red-300"
+                  >
+                    {truncateAddress(tx.hash)}
+                  </a>
+                )}
+              </div>
             </div>
-            <p className="truncate text-sm">
-              <span className="font-medium text-white">
-                Sent {formatAmount(tx.value)} {tx.nativeSymbol}
-              </span>{' '}
-              <span className="font-mono text-gray-400">
-                to {truncateAddress(tx.target)}
-              </span>
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="whitespace-nowrap text-xs text-gray-500">
-              {timeAgo(tx.timestamp)}
-            </span>
-            {tx.explorerUrl && (
-              <a
-                href={explorerTxUrl(tx.explorerUrl, tx.hash)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="whitespace-nowrap text-xs text-red-400 transition-colors hover:text-red-300"
-              >
-                {truncateAddress(tx.hash)}
-              </a>
+
+            {/* Smart route sub-steps */}
+            {isSmartRoute && tx.smartRoute && tx.smartRoute.length > 0 && (
+              <div className="mt-2 space-y-1 border-l-2 border-blue-500/20 pl-3">
+                {tx.smartRoute.map((step, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className={`text-xs ${
+                      step.type === 'swap' ? 'text-blue-400' : 'text-green-400'
+                    }`}>
+                      {step.description}
+                    </span>
+                    {step.hash && tx.explorerUrl && (
+                      <a
+                        href={explorerTxUrl(tx.explorerUrl, step.hash)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs text-gray-500 hover:text-gray-300"
+                      >
+                        {step.hash.slice(0, 6)}...{step.hash.slice(-4)}
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
