@@ -892,6 +892,101 @@ export function createRouter(executor: Executor): Router {
     }
   });
 
+  // GET /prices — token prices in USD (CoinGecko with 5-min cache)
+  let priceCache: { prices: Record<string, number>; source: string; timestamp: number } | null = null;
+  const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  const COINGECKO_IDS: Record<number, string> = {
+    43113: 'avalanche-2',
+    43114: 'avalanche-2',
+    4337: 'beam-2',
+  };
+
+  const FALLBACK_PRICES: Record<number, number> = {
+    43113: 8.90,
+    43114: 8.90,
+    4337: 0.01,
+  };
+
+  router.get('/prices', async (_req, res) => {
+    try {
+      const now = Date.now();
+
+      // Return cached if still fresh
+      if (priceCache && (now - priceCache.timestamp) < PRICE_CACHE_TTL) {
+        res.json({
+          prices: priceCache.prices,
+          source: priceCache.source,
+          cached: true,
+        });
+        return;
+      }
+
+      // Fetch from CoinGecko
+      const uniqueIds = [...new Set(Object.values(COINGECKO_IDS))].join(',');
+      let priceMap: Record<string, number> = {};
+      let source = 'fallback';
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const cgRes = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${uniqueIds}&vs_currencies=usd`,
+          { signal: controller.signal }
+        );
+        clearTimeout(timeout);
+
+        if (cgRes.ok) {
+          const cgData = await cgRes.json();
+          for (const [chainIdStr, geckoId] of Object.entries(COINGECKO_IDS)) {
+            const price = cgData[geckoId]?.usd;
+            if (typeof price === 'number') {
+              priceMap[chainIdStr] = price;
+            }
+          }
+          if (Object.keys(priceMap).length > 0) {
+            source = 'coingecko';
+          }
+        }
+      } catch {
+        // CoinGecko unavailable — use fallback
+      }
+
+      // Fill missing with fallback
+      for (const [chainId, fallbackPrice] of Object.entries(FALLBACK_PRICES)) {
+        if (!(chainId in priceMap)) {
+          priceMap[chainId] = fallbackPrice;
+          if (source === 'coingecko') source = 'coingecko+fallback';
+        }
+      }
+
+      // If nothing from CoinGecko, pure fallback
+      if (source === 'fallback') {
+        priceMap = Object.fromEntries(
+          Object.entries(FALLBACK_PRICES).map(([k, v]) => [k, v])
+        );
+      }
+
+      priceCache = { prices: priceMap, source, timestamp: now };
+
+      res.json({
+        prices: priceMap,
+        source,
+        cached: false,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`GET /prices failed: ${message}`);
+      res.json({
+        prices: Object.fromEntries(
+          Object.entries(FALLBACK_PRICES).map(([k, v]) => [k, v])
+        ),
+        source: 'fallback',
+        cached: false,
+      });
+    }
+  });
+
   // GET /health — health check
   router.get('/health', (_req, res) => {
     const chains = getAllChains();

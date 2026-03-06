@@ -38,12 +38,6 @@ interface TransactionRecord {
   timestamp: number;
 }
 
-const COINGECKO_IDS: Record<number, string> = {
-  43113: 'avalanche-2',
-  43114: 'avalanche-2',
-  4337: 'beam-2',
-};
-
 export default function DashboardPage() {
   const { wallet, hydrated } = useWallet();
   const router = useRouter();
@@ -62,25 +56,24 @@ export default function DashboardPage() {
     }
 
     try {
-      const [balanceRes, chainsRes, txRes, priceRes] = await Promise.all([
+      const [balanceRes, chainsRes, txRes, pricesRes] = await Promise.all([
         fetch(`${RELAYER_URL}/balance?walletAddress=${wallet.address}`),
         fetch(`${RELAYER_URL}/chains`),
         fetch(`${RELAYER_URL}/transactions?walletAddress=${wallet.address}`),
-        fetch('https://api.coingecko.com/api/v3/simple/price?ids=avalanche-2,beam-2&vs_currencies=usd')
-          .catch(() => null),
+        fetch(`${RELAYER_URL}/prices`).catch(() => null),
       ]);
 
-      // Parse CoinGecko prices
-      if (priceRes?.ok) {
+      // Parse prices from relayer
+      if (pricesRes?.ok) {
         try {
-          const priceData = await priceRes.json();
+          const pricesData: { prices: Record<string, number> } = await pricesRes.json();
           const priceMap: Record<number, number> = {};
-          for (const [chainIdStr, geckoId] of Object.entries(COINGECKO_IDS)) {
-            priceMap[Number(chainIdStr)] = priceData[geckoId]?.usd || 0;
+          for (const [chainIdStr, price] of Object.entries(pricesData.prices)) {
+            priceMap[Number(chainIdStr)] = price;
           }
           setPrices(priceMap);
         } catch {
-          // CoinGecko parse error — skip USD display
+          // Price parse error — skip USD display
         }
       }
 
@@ -181,15 +174,27 @@ export default function DashboardPage() {
                 const price = prices[b.chainId] || 0;
                 return sum + parseFloat(b.balance) * price;
               }, 0);
-              const hasPrices = Object.keys(prices).length > 0 && totalUsd > 0;
+              const hasPrices = Object.keys(prices).length > 0;
 
               return hasPrices ? (
                 <>
                   <p className="text-4xl font-bold">${totalUsd.toFixed(2)}</p>
-                  <p className="mt-1 text-sm text-gray-400">{totalBalance} tokens</p>
+                  <p className="mt-1 text-sm text-gray-400">
+                    {balances
+                      .filter((b) => parseFloat(b.balance) > 0)
+                      .map((b) => `${b.balance} ${b.nativeSymbol}`)
+                      .join(' + ') || 'No balance'}
+                  </p>
                 </>
               ) : (
-                <p className="text-5xl font-bold">{totalBalance}</p>
+                <>
+                  <p className="text-4xl font-bold">
+                    {balances
+                      .filter((b) => parseFloat(b.balance) > 0)
+                      .map((b) => `${b.balance} ${b.nativeSymbol}`)
+                      .join(' + ') || '0.0000'}
+                  </p>
+                </>
               );
             })()}
           </div>
