@@ -38,6 +38,9 @@ contract ICMSyncTest is Test {
 
         // Register the wallet in ICMSync
         icmSync.registerWallet(walletAddr);
+
+        // Authorize ICMSync to update wallet keys
+        OneClickWallet(payable(walletAddr)).setICMSync(address(icmSync));
     }
 
     // --- Admin tests ---
@@ -242,6 +245,66 @@ contract ICMSyncTest is Test {
         vm.prank(nonOwner);
         vm.expectRevert(OneClickWallet.OnlyICMSync.selector);
         wallet.updateOwnerKey(newPubKeyX, newPubKeyY);
+    }
+
+    // --- End-to-end sync tests ---
+
+    function testReceiveMessageUpdatesWalletKey() public {
+        icmSync.registerRemoteContract(REMOTE_BLOCKCHAIN_ID, REMOTE_ICM_SYNC);
+
+        // Verify original keys
+        OneClickWallet wallet = OneClickWallet(payable(walletAddr));
+        (bytes32 origX, bytes32 origY) = wallet.getOwnerPubKey();
+        assertEq(origX, testPubKeyX);
+        assertEq(origY, testPubKeyY);
+
+        // Simulate receiving a REPLACE_KEY message from a remote chain
+        ICMSync.KeySyncMessage memory syncMsg = ICMSync.KeySyncMessage({
+            walletAddress: walletAddr,
+            action: ICMSync.SyncAction.REPLACE_KEY,
+            pubKeyX: newPubKeyX,
+            pubKeyY: newPubKeyY,
+            syncNonce: 0
+        });
+
+        vm.prank(address(mockTeleporter));
+        icmSync.receiveTeleporterMessage(REMOTE_BLOCKCHAIN_ID, REMOTE_ICM_SYNC, abi.encode(syncMsg));
+
+        // Verify keys were actually updated in the wallet
+        (bytes32 updatedX, bytes32 updatedY) = wallet.getOwnerPubKey();
+        assertEq(updatedX, newPubKeyX);
+        assertEq(updatedY, newPubKeyY);
+    }
+
+    function testFullSyncRoundTrip() public {
+        // Setup: register remote chain and wallet chains
+        icmSync.registerRemoteContract(REMOTE_BLOCKCHAIN_ID, REMOTE_ICM_SYNC);
+        icmSync.addWalletChain(walletAddr, REMOTE_BLOCKCHAIN_ID);
+
+        // Step 1: Wallet sends a sync message to remote chain
+        vm.prank(walletAddr);
+        icmSync.syncKeyToChain(
+            REMOTE_BLOCKCHAIN_ID, walletAddr, ICMSync.SyncAction.REPLACE_KEY, newPubKeyX, newPubKeyY
+        );
+
+        // Verify the outbound message was built correctly
+        assertEq(mockTeleporter.getMessageCount(), 1);
+        ICMSync.KeySyncMessage memory sentMsg =
+            abi.decode(mockTeleporter.getMessage(0).message, (ICMSync.KeySyncMessage));
+        assertEq(sentMsg.walletAddress, walletAddr);
+        assertEq(sentMsg.pubKeyX, newPubKeyX);
+
+        // Step 2: Simulate the remote chain sending the same message back
+        // (in production, the remote ICMSync would process and forward)
+        bytes memory messagePayload = mockTeleporter.getMessage(0).message;
+        vm.prank(address(mockTeleporter));
+        icmSync.receiveTeleporterMessage(REMOTE_BLOCKCHAIN_ID, REMOTE_ICM_SYNC, messagePayload);
+
+        // Step 3: Verify the wallet keys are updated end-to-end
+        OneClickWallet wallet = OneClickWallet(payable(walletAddr));
+        (bytes32 finalX, bytes32 finalY) = wallet.getOwnerPubKey();
+        assertEq(finalX, newPubKeyX);
+        assertEq(finalY, newPubKeyY);
     }
 
     // --- View function tests ---

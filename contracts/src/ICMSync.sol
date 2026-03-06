@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {ITeleporterMessenger, TeleporterMessageInput, TeleporterFeeInfo} from "./interfaces/ITeleporterMessenger.sol";
 import {ITeleporterReceiver} from "./interfaces/ITeleporterReceiver.sol";
+import {OneClickWallet} from "./OneClickWallet.sol";
 
 /// @title ICMSync
 /// @notice Cross-L1 key synchronization for OneClick wallets using Avalanche Interchain Messaging.
@@ -209,8 +210,8 @@ contract ICMSync is ITeleporterReceiver {
             syncMsg.walletAddress, sourceBlockchainID, syncMsg.action, syncMsg.pubKeyX, syncMsg.pubKeyY
         );
 
-        // TODO (production): Call OneClickWallet.updateOwnerKey(pubKeyX, pubKeyY)
-        // This requires the wallet to have an updateKey function that only ICMSync can call.
+        // Apply the key update to the wallet contract on this chain
+        OneClickWallet(payable(syncMsg.walletAddress)).updateOwnerKey(syncMsg.pubKeyX, syncMsg.pubKeyY);
     }
 
     // --- View functions ---
