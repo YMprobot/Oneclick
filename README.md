@@ -2,7 +2,7 @@
 
 Universal smart wallet with passkey authentication for Avalanche L1 blockchains. No seed phrases. No network switching. No gas fees.
 
-**[Live Demo](https://oneclick-orcin-nine.vercel.app)** | **[Walkthrough Video](#)** | **[Relayer API](https://oneclick-production-54fc.up.railway.app/health)**
+**[Live Demo](https://oneclick-orcin-nine.vercel.app)** | **[Walkthrough Video — Coming soon]** | **[Relayer API](https://oneclick-production-54fc.up.railway.app/health)**
 
 > Built solo in 6 days for **Avalanche Build Games 2026**.
 
@@ -27,7 +27,7 @@ OneClick gives users a single wallet that works across all Avalanche L1s with bi
 **5 lines of code to integrate:**
 
 ```typescript
-import { connect } from "oneclick-sdk";
+import { connect } from "oneclick-wallet-sdk";
 
 const wallet = await connect({ relayerUrl: "https://oneclick-production-54fc.up.railway.app" });
 
@@ -119,9 +119,9 @@ Verified on: **Fuji C-Chain** (43113) · **Avalanche C-Chain** (43114) · **BEAM
 ## Test Results
 
 ```
-35 tests, 35 passed, 0 failed
+39 tests, 39 passed, 0 failed
 
-OneClickWalletTest: 16 tests
+OneClickWalletTest: 20 tests
   ├── Deploy, CREATE2 prediction, double-deploy revert
   ├── Execute with P256 signature, WebAuthn, relayer-only
   ├── Nonce increment, access control
@@ -221,7 +221,7 @@ oneclick/
 │   │   ├── Paymaster.sol           # Gas sponsorship
 │   │   ├── ICMSync.sol             # Cross-L1 key sync (Teleporter)
 │   │   └── interfaces/             # ITeleporterMessenger, ITeleporterReceiver
-│   ├── test/                       # 35 Forge tests + mocks
+│   ├── test/                       # 39 Forge tests + mocks
 │   ├── script/                     # Deploy + DeployDeterministic scripts
 │   └── deployments/                # Deployed addresses per chain
 ├── relayer/                  # Node.js transaction relayer
@@ -273,7 +273,7 @@ dApp developers pay to sponsor gas for their users through Paymaster contracts. 
 - [x] Gas sponsorship via Paymaster
 - [x] SDK with 5-line integration API
 - [x] Live demo + relayer deployed
-- [x] 35/35 tests passing
+- [x] 39/39 tests passing
 - [ ] SDK published on npm
 - [ ] Account recovery (social recovery)
 - [ ] Decentralized relayer network
