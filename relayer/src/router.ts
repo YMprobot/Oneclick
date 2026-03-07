@@ -256,8 +256,15 @@ export function createRouter(executor: Executor): Router {
         console.log(`  wallet AVAX balance: ${ethers.formatEther(nativeBalance)}, swap needs: ${ethers.formatEther(swapValueBig)}`);
 
         const deadline = Math.floor(Date.now() / 1000) + 1200;
+        // Calculate minimum output with 5% max slippage
+        const estimatedOut = ethers.parseUnits(
+          plan.swapDetails!.estimatedAmountOut,
+          tokenConfig.decimals
+        );
+        const amountOutMin = estimatedOut * 95n / 100n;
+
         const swapCalldata = buildSwapNativeForTokensCalldata(
-          0n, // testnet: accept any output
+          amountOutMin,
           defaultBinStep,
           wavaxAddress,
           tokenConfig.address,
@@ -783,8 +790,12 @@ export function createRouter(executor: Executor): Router {
           return;
         }
 
-        // For testnet, use amountOutMin = 0 for simplicity
-        const amountOutMin = 0n;
+        // Calculate minimum output with 5% max slippage
+        const avaxPriceUsd = 25; // TODO: replace with oracle price
+        const avaxIn = Number(BigInt(amount)) / 1e18;
+        const estimatedOutput = BigInt(Math.floor(avaxIn * avaxPriceUsd * 10 ** tokenConfig.decimals));
+        const amountOutMin = estimatedOutput * 95n / 100n;
+
         const swapCalldata = buildSwapNativeForTokensCalldata(
           amountOutMin,
           defaultBinStep,
@@ -840,8 +851,12 @@ export function createRouter(executor: Executor): Router {
 
         console.log(`  approve tx submitted for ${fromToken}`);
 
-        // Step 2: Swap tokens for AVAX
-        const amountOutMin = 0n; // testnet: accept any output
+        // Step 2: Swap tokens for AVAX — 5% max slippage
+        const avaxPriceUsd = 25; // TODO: replace with oracle price
+        const tokenAmountUsd = Number(amountBigInt) / 10 ** tokenConfig.decimals;
+        const estimatedAvaxOut = BigInt(Math.floor((tokenAmountUsd / avaxPriceUsd) * 1e18));
+        const amountOutMin = estimatedAvaxOut * 95n / 100n;
+
         const swapCalldata = buildSwapTokensForNativeCalldata(
           amountBigInt,
           amountOutMin,
