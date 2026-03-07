@@ -35,7 +35,7 @@ Complete project reference for any new Claude Code session.
 | 39/39 Forge tests passing | Done |
 | Slippage protection (5% max) | Done |
 | Docker non-root user | Done |
-| SDK published on npm | Not done |
+| SDK published on npm | Done ([npmjs.com](https://www.npmjs.com/package/oneclick-wallet-sdk)) |
 | Walkthrough video | Not done |
 | Account recovery (social recovery) | Not done |
 | Decentralized relayer network | Not done |
@@ -201,7 +201,7 @@ Base URL: `https://oneclick-production-54fc.up.railway.app`
 
 ## 8. SDK
 
-**Package:** `oneclick-wallet-sdk` v0.1.0 (npm: **not yet published**)
+**Package:** [`oneclick-wallet-sdk`](https://www.npmjs.com/package/oneclick-wallet-sdk) v0.1.0 — published on npm
 
 | Export | Type | Description |
 |--------|------|-------------|
@@ -330,8 +330,7 @@ npm run build              # tsc → dist/
 | Priority | Task | Effort |
 |----------|------|--------|
 | 1 | Record walkthrough video | 1-2h |
-| 2 | Publish SDK to npm (`npm publish`) | 15 min |
-| 3 | Final README polish + video link | 15 min |
-| 4 | Test demo end-to-end on Fuji (send + swap + smart route) | 30 min |
-| 5 | Remove mainnet chain registration (safety) | 5 min |
-| 6 | Push all commits, verify GitHub is up to date | 5 min |
+| 2 | Final README polish + video link | 15 min |
+| 3 | Test demo end-to-end on Fuji (send + swap + smart route) | 30 min |
+| 4 | Remove mainnet chain registration (safety) | 5 min |
+| 5 | Push all commits, verify GitHub is up to date | 5 min |

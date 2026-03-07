@@ -274,7 +274,7 @@ dApp developers pay to sponsor gas for their users through Paymaster contracts. 
 - [x] SDK with 5-line integration API
 - [x] Live demo + relayer deployed
 - [x] 39/39 tests passing
-- [ ] SDK published on npm
+- [x] SDK published on npm ([oneclick-wallet-sdk](https://www.npmjs.com/package/oneclick-wallet-sdk))
 - [ ] Account recovery (social recovery)
 - [ ] Decentralized relayer network
 - [ ] Mobile app (React Native)
