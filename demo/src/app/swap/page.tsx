@@ -395,9 +395,9 @@ export default function SwapPage() {
                     placeholder="0.0"
                     step="0.001"
                     min="0"
-                    className="flex-1 bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-gray-600"
+                    className="min-w-0 flex-1 bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-gray-600"
                   />
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-shrink-0 items-center gap-2">
                     {fromBalance !== null && parseFloat(fromBalance) > 0 && (
                       <button
                         onClick={handleMax}
