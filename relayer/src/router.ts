@@ -45,6 +45,26 @@ function resolveWalletKeys(
   return undefined;
 }
 
+/** Fetch live AVAX/USD price from DeFiLlama with fallback */
+async function getAvaxPrice(): Promise<number> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch('https://coins.llama.fi/prices/current/coingecko:avalanche-2', {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (res.ok) {
+      const data: { coins: Record<string, { price: number }> } = await res.json();
+      const p = data.coins['coingecko:avalanche-2']?.price;
+      if (typeof p === 'number' && p > 0) return p;
+    }
+  } catch {
+    // fallback
+  }
+  return 8.84;
+}
+
 export function createRouter(executor: Executor): Router {
   const router = Router();
 
@@ -687,8 +707,7 @@ export function createRouter(executor: Executor): Router {
       const fromDecimals = isFromNative ? 18 : fromTokenConfig!.decimals;
       const toDecimals = isToNative ? 18 : toTokenConfig!.decimals;
 
-      // Approximate prices (testnet: AVAX ~25 USD)
-      const avaxPriceUsd = 25;
+      const avaxPriceUsd = await getAvaxPrice();
       let estimatedOutputRaw: bigint;
 
       if (isFromNative && !isToNative) {
@@ -791,7 +810,7 @@ export function createRouter(executor: Executor): Router {
         }
 
         // Calculate minimum output with 5% max slippage
-        const avaxPriceUsd = 25; // TODO: replace with oracle price
+        const avaxPriceUsd = await getAvaxPrice();
         const avaxIn = Number(BigInt(amount)) / 1e18;
         const estimatedOutput = BigInt(Math.floor(avaxIn * avaxPriceUsd * 10 ** tokenConfig.decimals));
         const amountOutMin = estimatedOutput * 95n / 100n;
@@ -852,7 +871,7 @@ export function createRouter(executor: Executor): Router {
         console.log(`  approve tx submitted for ${fromToken}`);
 
         // Step 2: Swap tokens for AVAX — 5% max slippage
-        const avaxPriceUsd = 25; // TODO: replace with oracle price
+        const avaxPriceUsd = await getAvaxPrice();
         const tokenAmountUsd = Number(amountBigInt) / 10 ** tokenConfig.decimals;
         const estimatedAvaxOut = BigInt(Math.floor((tokenAmountUsd / avaxPriceUsd) * 1e18));
         const amountOutMin = estimatedAvaxOut * 95n / 100n;
