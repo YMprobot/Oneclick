@@ -78,7 +78,7 @@ function Hero() {
           </a>
         </div>
 
-        <div style={{ display: "flex", gap: 40, justifyContent: "center", marginTop: 56, flexWrap: "wrap" }}>
+        <div className="lp-stats" style={{ display: "flex", gap: 40, justifyContent: "center", marginTop: 56, flexWrap: "wrap" }}>
           {[["3", "Blockchains"], ["0", "Seed Phrases"], ["1 Tap", "To Invest"], ["<2s", "Transaction"]].map(([v, l], i) => (
             <div key={i} style={{ textAlign: "center" }}>
               <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", color: C.accent }}>{v}</div>
@@ -87,7 +87,26 @@ function Hero() {
           ))}
         </div>
       </div>
-      <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+        @media(max-width:768px){
+          .lp-nav-inner{padding:12px 16px !important;}
+          .lp-nav-btn{padding:7px 14px !important; font-size:12px !important;}
+          .lp-section{padding:48px 16px !important;}
+          .lp-grid-2{grid-template-columns:1fr !important;}
+          .lp-grid-4{grid-template-columns:1fr 1fr !important;}
+          .lp-card{padding:24px 18px !important;}
+          .lp-heading{font-size:28px !important;}
+          .lp-stats{gap:24px !important; display:grid !important; grid-template-columns:1fr 1fr !important;}
+          .lp-footer{flex-direction:column !important; align-items:flex-start !important; gap:12px !important;}
+          .lp-code{padding:16px !important; font-size:11.5px !important;}
+          .lp-sdk-card{padding:28px 18px !important;}
+          .lp-table-wrap{margin:0 -16px; padding:0 16px;}
+        }
+        @media(max-width:480px){
+          .lp-grid-4{grid-template-columns:1fr !important;}
+        }
+      `}</style>
     </div>
   );
 }
@@ -96,10 +115,10 @@ function Hero() {
 function ProblemSolution() {
   return (
     <Reveal>
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div className="lp-section" style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
+        <div className="lp-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           {/* Problem */}
-          <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, padding: 36 }}>
+          <div className="lp-card" style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, padding: 36 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>Now: 7 steps to buy a token on another L1</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {["Write down 12-word seed phrase", "Install wallet extension", "Add network manually (RPC, Chain ID)", "Buy gas token on exchange", "Transfer gas token to wallet", "Confirm tx via confusing popup", "Repeat for every new chain"].map((s, i) => (
@@ -115,10 +134,10 @@ function ProblemSolution() {
           </div>
 
           {/* Solution */}
-          <div style={{ background: C.card, borderRadius: 20, border: `1px solid rgba(34,197,94,0.15)`, padding: 36, position: "relative", overflow: "hidden" }}>
+          <div className="lp-card" style={{ background: C.card, borderRadius: 20, border: `1px solid rgba(34,197,94,0.15)`, padding: 36, position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${C.green}, transparent)` }}/>
             <div style={{ fontSize: 12, fontWeight: 700, color: C.green, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16 }}>With OneClick: 1 step</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: C.text, lineHeight: 1.15, marginBottom: 24 }}>Tap your finger.<br/>Done.</div>
+            <div className="lp-heading" style={{ fontSize: 32, fontWeight: 800, color: C.text, lineHeight: 1.15, marginBottom: 24 }}>Tap your finger.<br/>Done.</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
                 ["No seed phrases", "Key lives in Secure Enclave \u2014 same chip as Apple Pay"],
@@ -205,10 +224,10 @@ function Verticals() {
 
   return (
     <Reveal>
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
+      <div className="lp-section" style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Use Cases</p>
-          <h2 style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", margin: 0 }}>One platform. Three markets.</h2>
+          <h2 className="lp-heading" style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", margin: 0 }}>One platform. Three markets.</h2>
         </div>
 
         {/* Tabs */}
@@ -225,12 +244,12 @@ function Verticals() {
         </div>
 
         {/* Content */}
-        <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${d.color}20`, padding: 40, position: "relative", overflow: "hidden" }}>
+        <div className="lp-card" style={{ background: C.card, borderRadius: 20, border: `1px solid ${d.color}20`, padding: 40, position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${d.color}, transparent)` }}/>
 
           <div style={{ fontSize: 22, fontWeight: 700, color: C.text, marginBottom: 8 }}>{d.tagline}</div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginTop: 24 }}>
+          <div className="lp-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, marginTop: 24 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: d.color, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14 }}>For Projects</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -295,14 +314,14 @@ function HowAndCompare() {
 
   return (
     <Reveal>
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
+      <div className="lp-section" style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>How It Works</p>
-          <h2 style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", margin: 0 }}>Zero to invested in 2 minutes</h2>
+          <h2 className="lp-heading" style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", margin: 0 }}>Zero to invested in 2 minutes</h2>
         </div>
 
         {/* Steps */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 56 }}>
+        <div className="lp-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 56 }}>
           {steps.map((s, i) => (
             <div key={i} style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, padding: "24px 20px", textAlign: "center", transition: "border-color 0.3s" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = s.color + "40"}
@@ -320,7 +339,8 @@ function HowAndCompare() {
           <p style={{ fontSize: 13, color: C.dim }}>Privy acquired by Stripe. Dynamic acquired by Fireblocks. The market is consolidating. OneClick is independent and open-source.</p>
         </div>
 
-        <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, overflow: "hidden" }}>
+        <div className="lp-table-wrap" style={{ borderRadius: 16, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, overflow: "hidden", minWidth: 760 }}>
           {/* Header */}
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1.3fr 1.3fr 1.6fr", borderBottom: `1px solid ${C.border}` }}>
             {["", "MetaMask", "Biconomy", "Abstract", "OneClick"].map((h, i) => (
@@ -348,6 +368,7 @@ function HowAndCompare() {
             </div>
           ))}
         </div>
+        </div>
       </div>
     </Reveal>
   );
@@ -364,19 +385,20 @@ function SDKRoadmapFooter() {
 
   return (
     <Reveal>
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
+      <div className="lp-section" style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
         {/* SDK */}
-        <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, padding: "48px 40", textAlign: "center", position: "relative", overflow: "hidden", marginBottom: 48 }}>
+        <div className="lp-card lp-sdk-card" style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, padding: "48px 40", textAlign: "center", position: "relative", overflow: "hidden", marginBottom: 48 }}>
           <div style={{ position: "absolute", top: "-60px", left: "50%", transform: "translateX(-50%)", width: 400, height: 400, borderRadius: "50%", background: C.accentGlow, filter: "blur(80px)", pointerEvents: "none", opacity: 0.5 }}/>
           <div style={{ position: "relative" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>For Developers</p>
             <h2 style={{ fontSize: 30, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", margin: "0 0 8px" }}>5 lines of code. All L1s.</h2>
             <p style={{ fontSize: 14, color: C.muted, marginBottom: 28 }}>Replace MetaMask popups with fingerprint auth. 30 minutes to integrate.</p>
 
-            <div style={{
+            <div className="lp-code" style={{
               background: "#090912", borderRadius: 14, border: `1px solid ${C.border}`, padding: 28,
               textAlign: "left", maxWidth: 540, margin: "0 auto",
               fontFamily: "'SF Mono','Fira Code',monospace", fontSize: 13, lineHeight: 1.9,
+              overflowX: "auto",
             }}>
               <div><span style={{ color: "#c678dd" }}>import</span> <span style={{ color: "#e5c07b" }}>{"{ connect }"}</span> <span style={{ color: "#c678dd" }}>from</span> <span style={{ color: "#98c379" }}>&quot;oneclick-wallet-sdk&quot;</span>;</div>
               <div style={{ height: 6 }}/>
@@ -402,7 +424,7 @@ function SDKRoadmapFooter() {
           <h2 style={{ fontSize: 24, fontWeight: 800, color: C.text, letterSpacing: "-0.02em", margin: 0 }}>From hackathon to protocol</h2>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
+        <div className="lp-grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
           {phases.map((p, i) => (
             <div key={i} style={{ background: C.card, borderRadius: 14, border: `1px solid ${p.status === "now" ? p.color + "35" : C.border}`, padding: "20px 18px", position: "relative", overflow: "hidden" }}>
               {p.status === "now" && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: p.color }}/>}
@@ -420,7 +442,7 @@ function SDKRoadmapFooter() {
         </div>
 
         {/* Footer */}
-        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 64, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+        <div className="lp-footer" style={{ borderTop: `1px solid ${C.border}`, marginTop: 64, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: "-0.02em", color: C.text }}>OneClick</span>
             <span style={{ fontSize: 12, color: C.dim, marginLeft: 6 }}>One Fingerprint. Every Asset.</span>
@@ -452,11 +474,11 @@ function Nav() {
       backdropFilter: scrolled ? "blur(14px)" : "none",
       borderBottom: scrolled ? `1px solid ${C.border}` : "1px solid transparent",
       transition: "all 0.3s" }}>
-      <div style={{ maxWidth: 1120, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div className="lp-nav-inner" style={{ maxWidth: 1120, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontWeight: 700, fontSize: 17, letterSpacing: "-0.02em", color: C.text }}>OneClick</span>
         </div>
-        <Link href="/app" style={{
+        <Link href="/app" className="lp-nav-btn" style={{
           background: C.accent, color: "#fff", padding: "7px 18px",
           borderRadius: 8, textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
           Launch App
