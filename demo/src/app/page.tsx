@@ -102,7 +102,9 @@ function Hero() {
           .lp-code{padding:16px !important; font-size:11.5px !important;}
           .lp-sdk-card{padding:28px 18px !important;}
           .lp-table-wrap{margin:0 -16px; padding:0 16px;}
+          .lp-scroll-hint{display:block !important; animation:lp-fade 2s ease-in-out infinite;}
         }
+        @keyframes lp-fade{0%,100%{opacity:0.4}50%{opacity:1}}
         @media(max-width:480px){
           .lp-grid-4{grid-template-columns:1fr !important;}
         }
@@ -339,30 +341,33 @@ function HowAndCompare() {
           <p style={{ fontSize: 13, color: C.dim }}>Privy acquired by Stripe. Dynamic acquired by Fireblocks. The market is consolidating. OneClick is independent and open-source.</p>
         </div>
 
+        <div className="lp-scroll-hint" style={{ display: "none", textAlign: "center", fontSize: 12, color: C.dim, marginBottom: 8 }}>
+          Swipe to compare →
+        </div>
         <div className="lp-table-wrap" style={{ borderRadius: 16, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
         <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, overflow: "hidden", minWidth: 760 }}>
           {/* Header */}
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1.3fr 1.3fr 1.6fr", borderBottom: `1px solid ${C.border}` }}>
-            {["", "MetaMask", "Biconomy", "Abstract", "OneClick"].map((h, i) => (
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.6fr 1.3fr 1.3fr 1.3fr", borderBottom: `1px solid ${C.border}` }}>
+            {["", "OneClick", "MetaMask", "Biconomy", "Abstract"].map((h, i) => (
               <div key={i} style={{
-                padding: "12px 16px", fontSize: 12, fontWeight: 700, color: i === 4 ? C.accent : C.muted,
+                padding: "12px 16px", fontSize: 12, fontWeight: 700, color: i === 1 ? C.accent : C.muted,
                 textTransform: "uppercase", letterSpacing: "0.06em",
-                background: i === 4 ? C.accentGlow : "transparent",
+                background: i === 1 ? C.accentGlow : "transparent",
                 borderLeft: i > 0 ? `1px solid ${C.border}` : "none",
               }}>{h}</div>
             ))}
           </div>
           {/* Rows */}
           {comparison.map((row, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1.3fr 1.3fr 1.3fr 1.6fr", borderBottom: i < comparison.length - 1 ? `1px solid ${C.border}` : "none" }}>
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1.6fr 1.3fr 1.3fr 1.3fr", borderBottom: i < comparison.length - 1 ? `1px solid ${C.border}` : "none" }}>
               <div style={{ padding: "10px 16px", fontSize: 13, fontWeight: 600, color: C.text }}>{row.feature}</div>
-              {[row.metamask, row.biconomy, row.abstract, row.oneclick].map((val, j) => (
+              {[row.oneclick, row.metamask, row.biconomy, row.abstract].map((val, j) => (
                 <div key={j} style={{
                   padding: "10px 16px", display: "flex", alignItems: "center",
                   borderLeft: `1px solid ${C.border}`,
-                  color: j === 3 ? C.green : C.muted,
-                  fontWeight: j === 3 ? 600 : 400,
-                  background: j === 3 ? C.accentGlow : "transparent",
+                  color: j === 0 ? C.green : C.muted,
+                  fontWeight: j === 0 ? 600 : 400,
+                  background: j === 0 ? C.accentGlow : "transparent",
                 }}><CellVal val={val}/></div>
               ))}
             </div>
