@@ -96,10 +96,9 @@ export async function planTransaction(
     }
 
     // Not enough! Need to swap AVAX -> this token first
-    const shortfall = transferAmount - tokenBalance;
-
-    // Add 5% buffer for slippage
-    const swapAmountNeeded = shortfall + (shortfall * 5n) / 100n;
+    // No buffer on stablecoins — swap exact shortfall amount.
+    // Slippage is handled on the native token (AVAX) side only.
+    const swapAmountNeeded = transferAmount - tokenBalance;
 
     // Estimate AVAX needed using real price from DeFiLlama (fetched at request time)
     let avaxPriceUsd = 8.84; // fallback
