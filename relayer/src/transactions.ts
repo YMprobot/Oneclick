@@ -1,12 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const DATA_DIR = join(__dirname, '..', 'data');
-const TRANSACTIONS_FILE = join(DATA_DIR, 'transactions.json');
+import { getAllChains } from './chains.js';
 
 export interface SmartRouteStep {
   type: 'swap' | 'transfer' | 'execute';
@@ -30,59 +22,112 @@ export interface TransactionRecord {
   smartRoute?: SmartRouteStep[];
 }
 
-const transactions: Map<string, TransactionRecord[]> = new Map();
+// Explorer API base URLs per chain
+const EXPLORER_API: Record<number, string> = {
+  43113: 'https://api-testnet.snowtrace.io/api',
+  43114: 'https://api.snowtrace.io/api',
+  4337: 'https://api.routescan.io/v2/network/mainnet/evm/4337/etherscan/api',
+};
 
-function ensureDataDir(): void {
-  if (!existsSync(DATA_DIR)) {
-    mkdirSync(DATA_DIR, { recursive: true });
-  }
-}
+// In-memory cache for current session (survives redeploys for active session)
+const sessionTxs: Map<string, TransactionRecord[]> = new Map();
 
-function loadFromDisk(): void {
-  ensureDataDir();
-  if (!existsSync(TRANSACTIONS_FILE)) {
-    return;
-  }
-  try {
-    const raw = readFileSync(TRANSACTIONS_FILE, 'utf-8');
-    const data: Record<string, TransactionRecord[]> = JSON.parse(raw);
-    for (const [address, records] of Object.entries(data)) {
-      transactions.set(address, records);
-    }
-    const totalCount = Array.from(transactions.values()).reduce((sum, arr) => sum + arr.length, 0);
-    console.log(`[transactions] Loaded ${totalCount} transactions for ${transactions.size} wallets from disk`);
-  } catch (err) {
-    console.error('[transactions] Failed to load transactions from disk:', err);
-  }
-}
-
-function saveToDisk(): void {
-  ensureDataDir();
-  const data: Record<string, TransactionRecord[]> = {};
-  for (const [address, records] of transactions.entries()) {
-    data[address] = records;
-  }
-  try {
-    writeFileSync(TRANSACTIONS_FILE, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('[transactions] Failed to save transactions to disk:', err);
-  }
-}
-
-// Load existing data on module init
-loadFromDisk();
-
+/** Store a transaction from the current session (instant UI feedback). */
 export function addTransaction(record: TransactionRecord): void {
   const key = record.walletAddress.toLowerCase();
-  if (!transactions.has(key)) {
-    transactions.set(key, []);
+  if (!sessionTxs.has(key)) {
+    sessionTxs.set(key, []);
   }
-  transactions.get(key)!.push(record);
-  saveToDisk();
+  sessionTxs.get(key)!.push(record);
 }
 
-export function getTransactions(walletAddress: string, limit = 20): TransactionRecord[] {
+interface ExplorerTx {
+  hash: string;
+  from: string;
+  to: string;
+  value: string;
+  timeStamp: string;
+  isError: string;
+  txreceipt_status: string;
+  functionName: string;
+  methodId: string;
+  input: string;
+}
+
+/** Fetch transaction history from block explorer APIs. */
+async function fetchOnChainTxs(walletAddress: string, limit: number): Promise<TransactionRecord[]> {
+  const chains = getAllChains();
+  const results: TransactionRecord[] = [];
+
+  await Promise.all(
+    chains.map(async (chain) => {
+      const apiUrl = EXPLORER_API[chain.chainId];
+      if (!apiUrl) return;
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const url = `${apiUrl}?module=account&action=txlist&address=${walletAddress}&startblock=0&endblock=99999999&page=1&offset=${limit}&sort=desc`;
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+
+        if (!res.ok) return;
+
+        const data: { status: string; result: ExplorerTx[] } = await res.json();
+        if (data.status !== '1' || !Array.isArray(data.result)) return;
+
+        for (const tx of data.result) {
+          const status = tx.isError === '0' && tx.txreceipt_status === '1' ? 'confirmed' : 'failed';
+          results.push({
+            id: `${chain.chainId}:${tx.hash}`,
+            walletAddress,
+            target: tx.to || '',
+            value: tx.value,
+            chainId: chain.chainId,
+            chainName: chain.name,
+            nativeSymbol: chain.nativeSymbol,
+            explorerUrl: chain.explorerUrl,
+            hash: tx.hash,
+            status,
+            timestamp: parseInt(tx.timeStamp, 10) * 1000,
+          });
+        }
+      } catch {
+        // Explorer unavailable — skip this chain
+      }
+    })
+  );
+
+  return results;
+}
+
+/** Get transactions: merges on-chain history with current session records. */
+export async function getTransactions(walletAddress: string, limit = 20): Promise<TransactionRecord[]> {
+  const onChain = await fetchOnChainTxs(walletAddress, limit);
+
+  // Merge session transactions (not yet indexed by explorer)
   const key = walletAddress.toLowerCase();
-  const records = transactions.get(key) || [];
-  return records.slice(-limit).reverse();
+  const session = sessionTxs.get(key) || [];
+
+  // Deduplicate by hash
+  const seen = new Set<string>();
+  const merged: TransactionRecord[] = [];
+
+  // Session txs first (they have richer metadata like txType, smartRoute)
+  for (const tx of session) {
+    if (!seen.has(tx.hash)) {
+      seen.add(tx.hash);
+      merged.push(tx);
+    }
+  }
+  for (const tx of onChain) {
+    if (!seen.has(tx.hash)) {
+      seen.add(tx.hash);
+      merged.push(tx);
+    }
+  }
+
+  // Sort newest first
+  merged.sort((a, b) => b.timestamp - a.timestamp);
+  return merged.slice(0, limit);
 }

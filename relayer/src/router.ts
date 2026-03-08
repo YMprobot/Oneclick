@@ -451,8 +451,8 @@ export function createRouter(executor: Executor): Router {
     }
   });
 
-  // GET /transactions — transaction history for a wallet
-  router.get('/transactions', (req, res) => {
+  // GET /transactions — transaction history for a wallet (on-chain + session)
+  router.get('/transactions', async (req, res) => {
     const walletAddress = req.query.walletAddress as string;
     const limitParam = req.query.limit as string | undefined;
 
@@ -461,9 +461,14 @@ export function createRouter(executor: Executor): Router {
       return;
     }
 
-    const limit = limitParam ? parseInt(limitParam, 10) : 20;
-    const records = getTransactions(walletAddress, limit);
-    res.json(records);
+    try {
+      const limit = limitParam ? parseInt(limitParam, 10) : 20;
+      const records = await getTransactions(walletAddress, limit);
+      res.json(records);
+    } catch (err) {
+      console.error('Failed to fetch transactions:', err);
+      res.json([]);
+    }
   });
 
   // GET /balance — wallet balance for one or all chains
