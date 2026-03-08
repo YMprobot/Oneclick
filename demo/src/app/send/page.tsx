@@ -8,6 +8,7 @@ import { RELAYER_URL } from '@/lib/constants';
 import { avaxToWei, toSmallestUnit, fromSmallestUnit } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { TransactionStatus } from '@/components/TransactionStatus';
+import { Spinner } from '@/components/Spinner';
 
 type FlowStatus = 'idle' | 'planning' | 'preparing' | 'signing' | 'swapping' | 'submitting' | 'success' | 'error';
 
@@ -534,10 +535,7 @@ export default function SendPage() {
 
               {isLoadingPlan && !isNative && (
                 <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <Spinner className="h-3 w-3" />
                   Checking route...
                 </div>
               )}
@@ -565,14 +563,14 @@ export default function SendPage() {
                   steps={plan.steps.map((s) => s.description)}
                   currentStatus={status}
                   completedSteps={routeSteps}
-                  explorerUrl={chains.find((c) => c.chainId === chainId)?.explorerUrl}
+                  explorerUrl={currentChain?.explorerUrl}
                 />
               ) : (
                 <TransactionStatus
                   status={status === 'swapping' ? 'submitting' : status === 'planning' ? 'preparing' : status}
                   txHash={txHash}
                   errorMessage={errorMessage}
-                  explorerUrl={chains.find((c) => c.chainId === chainId)?.explorerUrl}
+                  explorerUrl={currentChain?.explorerUrl}
                 />
               )}
 
@@ -585,7 +583,7 @@ export default function SendPage() {
                       <span className="text-sm text-gray-300">{step.description}</span>
                       {step.hash && (
                         <a
-                          href={`${chains.find((c) => c.chainId === chainId)?.explorerUrl || ''}/tx/${step.hash}`}
+                          href={`${currentChain?.explorerUrl || ''}/tx/${step.hash}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-mono text-xs text-red-400 hover:text-red-300"
@@ -705,10 +703,7 @@ function SmartRouteProgress({
                       : 'bg-gray-800 text-gray-500'
                 }`}>
                   {completed ? '✓' : isActive ? (
-                    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
+                    <Spinner className="h-3.5 w-3.5" />
                   ) : (i + 1)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -752,10 +747,7 @@ function SmartRouteProgress({
 function StatusMessage({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-center gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-300">
-      <svg className="h-5 w-5 animate-spin text-red-500" viewBox="0 0 24 24" fill="none">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-      </svg>
+      <Spinner className="h-5 w-5 text-red-500" />
       {children}
     </div>
   );

@@ -8,6 +8,7 @@ import { RELAYER_URL } from '@/lib/constants';
 import { avaxToWei, fromSmallestUnit, toSmallestUnit } from '@/lib/utils';
 import { Header } from '@/components/Header';
 import { TransactionStatus } from '@/components/TransactionStatus';
+import { Spinner } from '@/components/Spinner';
 
 type FlowStatus = 'idle' | 'preparing' | 'signing' | 'submitting' | 'success' | 'error';
 

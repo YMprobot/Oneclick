@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { RELAYER_URL } from '@/lib/constants';
@@ -157,6 +157,19 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [wallet, hydrated, router, fetchData]);
 
+  const { totalUsd, hasPrices, balanceSummary } = useMemo(() => {
+    const totalUsd = balances.reduce((sum, b) => {
+      const price = prices[b.chainId] || 0;
+      return sum + parseFloat(b.balance) * price;
+    }, 0);
+    const hasPrices = Object.keys(prices).length > 0;
+    const balanceSummary = balances
+      .filter((b) => parseFloat(b.balance) > 0)
+      .map((b) => `${b.balance} ${b.nativeSymbol}`)
+      .join(' + ');
+    return { totalUsd, hasPrices, balanceSummary };
+  }, [balances, prices]);
+
   if (!hydrated || !wallet) return null;
 
   return (
@@ -169,34 +182,18 @@ export default function DashboardPage() {
           <div className="mb-1 text-center">
             {isLoading ? (
               <div className="mx-auto h-12 w-48 animate-pulse rounded bg-gray-800" />
-            ) : (() => {
-              const totalUsd = balances.reduce((sum, b) => {
-                const price = prices[b.chainId] || 0;
-                return sum + parseFloat(b.balance) * price;
-              }, 0);
-              const hasPrices = Object.keys(prices).length > 0;
-
-              return hasPrices ? (
-                <>
-                  <p className="text-4xl font-bold">${totalUsd.toFixed(2)}</p>
-                  <p className="mt-1 text-sm text-gray-400">
-                    {balances
-                      .filter((b) => parseFloat(b.balance) > 0)
-                      .map((b) => `${b.balance} ${b.nativeSymbol}`)
-                      .join(' + ') || 'No balance'}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-4xl font-bold">
-                    {balances
-                      .filter((b) => parseFloat(b.balance) > 0)
-                      .map((b) => `${b.balance} ${b.nativeSymbol}`)
-                      .join(' + ') || '0.0000'}
-                  </p>
-                </>
-              );
-            })()}
+            ) : hasPrices ? (
+              <>
+                <p className="text-4xl font-bold">${totalUsd.toFixed(2)}</p>
+                <p className="mt-1 text-sm text-gray-400">
+                  {balanceSummary || 'No balance'}
+                </p>
+              </>
+            ) : (
+              <p className="text-4xl font-bold">
+                {balanceSummary || '0.0000'}
+              </p>
+            )}
           </div>
           <p className="mb-5 text-center text-sm text-gray-500">Total across all chains</p>
 
