@@ -907,20 +907,21 @@ export function createRouter(executor: Executor): Router {
     }
   });
 
-  // GET /prices — token prices in USD (CoinGecko with 5-min cache)
+  // GET /prices — token prices in USD (DeFiLlama with 5-min cache)
   let priceCache: { prices: Record<string, number>; source: string; timestamp: number } | null = null;
   const PRICE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-  const COINGECKO_IDS: Record<number, string> = {
-    43113: 'avalanche-2',
-    43114: 'avalanche-2',
-    4337: 'beam-2',
+  // DeFiLlama price identifiers per chain
+  const DEFILLAMA_IDS: Record<number, string> = {
+    43113: 'coingecko:avalanche-2',
+    43114: 'coingecko:avalanche-2',
+    4337: 'coingecko:beam-2',
   };
 
   const FALLBACK_PRICES: Record<number, number> = {
-    43113: 8.90,
-    43114: 8.90,
-    4337: 0.01,
+    43113: 8.84,
+    43114: 8.84,
+    4337: 0.002,
   };
 
   router.get('/prices', async (_req, res) => {
@@ -937,45 +938,45 @@ export function createRouter(executor: Executor): Router {
         return;
       }
 
-      // Fetch from CoinGecko
-      const uniqueIds = [...new Set(Object.values(COINGECKO_IDS))].join(',');
+      // Fetch from DeFiLlama
+      const uniqueIds = [...new Set(Object.values(DEFILLAMA_IDS))].join(',');
       let priceMap: Record<string, number> = {};
       let source = 'fallback';
 
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        const cgRes = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${uniqueIds}&vs_currencies=usd`,
+        const llamaRes = await fetch(
+          `https://coins.llama.fi/prices/current/${uniqueIds}`,
           { signal: controller.signal }
         );
         clearTimeout(timeout);
 
-        if (cgRes.ok) {
-          const cgData = await cgRes.json();
-          for (const [chainIdStr, geckoId] of Object.entries(COINGECKO_IDS)) {
-            const price = cgData[geckoId]?.usd;
+        if (llamaRes.ok) {
+          const llamaData: { coins: Record<string, { price: number }> } = await llamaRes.json();
+          for (const [chainIdStr, llamaId] of Object.entries(DEFILLAMA_IDS)) {
+            const price = llamaData.coins[llamaId]?.price;
             if (typeof price === 'number') {
               priceMap[chainIdStr] = price;
             }
           }
           if (Object.keys(priceMap).length > 0) {
-            source = 'coingecko';
+            source = 'defillama';
           }
         }
       } catch {
-        // CoinGecko unavailable — use fallback
+        // DeFiLlama unavailable — use fallback
       }
 
       // Fill missing with fallback
       for (const [chainId, fallbackPrice] of Object.entries(FALLBACK_PRICES)) {
         if (!(chainId in priceMap)) {
           priceMap[chainId] = fallbackPrice;
-          if (source === 'coingecko') source = 'coingecko+fallback';
+          if (source === 'defillama') source = 'defillama+fallback';
         }
       }
 
-      // If nothing from CoinGecko, pure fallback
+      // If nothing from DeFiLlama, pure fallback
       if (source === 'fallback') {
         priceMap = Object.fromEntries(
           Object.entries(FALLBACK_PRICES).map(([k, v]) => [k, v])
