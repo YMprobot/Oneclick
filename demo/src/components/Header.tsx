@@ -9,7 +9,7 @@ export function Header() {
 
   function handleDisconnect() {
     disconnect();
-    router.push('/');
+    router.push('/app');
   }
 
   const shortAddress = wallet?.address
