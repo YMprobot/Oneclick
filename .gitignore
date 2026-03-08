@@ -7,5 +7,7 @@ dist/
 .DS_Store
 .next/
 .claude/
+.vercel/
+*.tsbuildinfo
 relayer/dist/
 relayer/data/*.json
