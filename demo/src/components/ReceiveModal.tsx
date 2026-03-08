@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 
 const QRCodeSVG = dynamic(
@@ -16,23 +16,20 @@ interface ReceiveModalProps {
 export function ReceiveModal({ address, onClose }: ReceiveModalProps) {
   const [copied, setCopied] = useState(false);
 
-  async function handleCopy() {
+  const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const textarea = document.createElement('textarea');
       textarea.value = address;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
       document.body.removeChild(textarea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
-  }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [address]);
 
   return (
     <div
@@ -40,7 +37,7 @@ export function ReceiveModal({ address, onClose }: ReceiveModalProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl bg-gray-900 p-6"
+        className="w-full max-w-sm rounded-2xl border border-gray-800/50 bg-gray-900 p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-5 text-center text-xl font-bold text-white">Receive</h2>

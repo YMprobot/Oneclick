@@ -7,6 +7,7 @@ import { signChallenge } from '@/lib/webauthn';
 import { RELAYER_URL } from '@/lib/constants';
 import { avaxToWei, fromSmallestUnit, toSmallestUnit } from '@/lib/utils';
 import { Header } from '@/components/Header';
+import { BottomNav } from '@/components/BottomNav';
 import { TransactionStatus } from '@/components/TransactionStatus';
 import { Spinner } from '@/components/Spinner';
 
@@ -329,11 +330,11 @@ export default function SwapPage() {
   const canSwap = amount && parseFloat(amount) > 0 && fromToken !== toToken;
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen bg-gray-950 pb-20">
       <Header />
 
       <main className="mx-auto max-w-lg space-y-6 px-4 py-8">
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl shadow-red-500/5">
+        <div className="rounded-2xl border border-gray-800/50 bg-gray-900/50 p-6">
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-2xl font-bold">Swap</h1>
             {/* Slippage settings */}
@@ -561,15 +562,9 @@ export default function SwapPage() {
           )}
         </div>
 
-        {status === 'idle' && (
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="block w-full text-center text-sm text-gray-500 transition-colors hover:text-gray-300"
-          >
-            &larr; Back to Dashboard
-          </button>
-        )}
       </main>
+
+      <BottomNav />
     </div>
   );
 }

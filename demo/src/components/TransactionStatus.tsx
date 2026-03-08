@@ -1,3 +1,5 @@
+import { Spinner } from './Spinner';
+
 interface TransactionStatusProps {
   status: 'idle' | 'preparing' | 'signing' | 'submitting' | 'success' | 'error';
   txHash?: string;
@@ -107,15 +109,10 @@ export function TransactionStatus({ status, txHash, errorMessage, explorerUrl }:
   );
 }
 
-function StatusCard({ variant, children }: { variant: 'loading'; children: React.ReactNode }) {
+function StatusCard({ children }: { variant: 'loading'; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-center gap-3 rounded-xl border border-gray-800 bg-gray-900 p-4 text-sm text-gray-300">
-      {variant === 'loading' && (
-        <svg className="h-5 w-5 animate-spin text-red-500" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      )}
+      <Spinner className="h-5 w-5 text-red-500" />
       {children}
     </div>
   );
