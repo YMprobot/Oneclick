@@ -3,6 +3,7 @@ interface Asset {
   amount: string;
   usdValue: number;
   color: string;
+  chainName?: string;
 }
 
 interface AssetListProps {
@@ -23,9 +24,9 @@ export function AssetList({ assets }: AssetListProps) {
 
   return (
     <div className="space-y-1">
-      {assets.map((asset) => (
+      {assets.map((asset, i) => (
         <div
-          key={asset.symbol}
+          key={`${asset.symbol}-${asset.chainName ?? i}`}
           className="flex items-center justify-between rounded-2xl px-4 py-3 transition-colors hover:bg-gray-800/50"
         >
           <div className="flex items-center gap-3">
@@ -39,7 +40,7 @@ export function AssetList({ assets }: AssetListProps) {
             <div>
               <p className="font-semibold text-white">{asset.symbol}</p>
               <p className="text-sm text-gray-500">
-                {asset.amount} {asset.symbol}
+                {asset.chainName ? `${asset.chainName} · ` : ''}{asset.amount} {asset.symbol}
               </p>
             </div>
           </div>

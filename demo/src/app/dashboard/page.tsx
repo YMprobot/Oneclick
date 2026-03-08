@@ -151,77 +151,61 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [wallet, hydrated, router, fetchData]);
 
-  // Build unified asset list
+  // Build per-chain asset list (no aggregation — each token on each chain is a separate row)
   const { assets, totalUsd, segments } = useMemo(() => {
-    const assetMap = new Map<string, Asset>();
+    const list: Asset[] = [];
 
-    // Native tokens per chain
+    // Native tokens — one row per chain
     for (const chain of balances) {
       const bal = parseFloat(chain.balance);
       if (bal <= 0) continue;
       const price = prices[chain.chainId] || 0;
-      const usd = bal * price;
-      const symbol = chain.nativeSymbol;
-
-      const existing = assetMap.get(symbol);
-      if (existing) {
-        const prevAmount = parseFloat(existing.amount);
-        assetMap.set(symbol, {
-          ...existing,
-          amount: (prevAmount + bal).toFixed(4),
-          usdValue: existing.usdValue + usd,
-        });
-      } else {
-        assetMap.set(symbol, {
-          symbol,
-          amount: bal.toFixed(4),
-          usdValue: usd,
-          color: symbol,
-        });
-      }
+      list.push({
+        symbol: chain.nativeSymbol,
+        amount: bal.toFixed(4),
+        usdValue: bal * price,
+        color: chain.nativeSymbol,
+        chainName: chain.chainName,
+      });
     }
 
-    // ERC20 tokens
+    // ERC20 tokens — one row per token per chain
     for (const [chainIdStr, tokens] of Object.entries(tokenBalances)) {
       const chainId = Number(chainIdStr);
+      const chain = balances.find((b) => b.chainId === chainId);
       for (const t of tokens) {
         const bal = Number(t.balance) / Math.pow(10, t.decimals);
         if (bal <= 0) continue;
-        // Stablecoins = $1 per token
         const isStable = ['USDC', 'USDT', 'DAI'].includes(t.symbol);
         const usd = isStable ? bal : bal * (prices[chainId] || 0);
-
-        const existing = assetMap.get(t.symbol);
-        if (existing) {
-          const prevAmount = parseFloat(existing.amount);
-          assetMap.set(t.symbol, {
-            ...existing,
-            amount: (prevAmount + bal).toFixed(2),
-            usdValue: existing.usdValue + usd,
-          });
-        } else {
-          assetMap.set(t.symbol, {
-            symbol: t.symbol,
-            amount: bal.toFixed(2),
-            usdValue: usd,
-            color: t.symbol,
-          });
-        }
+        list.push({
+          symbol: t.symbol,
+          amount: bal.toFixed(2),
+          usdValue: usd,
+          color: t.symbol,
+          chainName: chain?.chainName,
+        });
       }
     }
 
-    const assets = Array.from(assetMap.values()).sort((a, b) => b.usdValue - a.usdValue);
-    const totalUsd = assets.reduce((sum, a) => sum + a.usdValue, 0);
+    list.sort((a, b) => b.usdValue - a.usdValue);
+    const totalUsd = list.reduce((sum, a) => sum + a.usdValue, 0);
 
-    const segments = assets
-      .filter((a) => a.usdValue > 0)
-      .map((a) => ({
-        label: a.symbol,
-        percent: totalUsd > 0 ? (a.usdValue / totalUsd) * 100 : 0,
-        color: a.symbol,
+    // Distribution bar segments — aggregate by symbol for the bar
+    const symbolTotals = new Map<string, number>();
+    for (const a of list) {
+      symbolTotals.set(a.symbol, (symbolTotals.get(a.symbol) || 0) + a.usdValue);
+    }
+    const segments = Array.from(symbolTotals.entries())
+      .filter(([, usd]) => usd > 0)
+      .sort(([, a], [, b]) => b - a)
+      .map(([symbol, usd]) => ({
+        label: symbol,
+        percent: totalUsd > 0 ? (usd / totalUsd) * 100 : 0,
+        color: symbol,
       }));
 
-    return { assets, totalUsd, segments };
+    return { assets: list, totalUsd, segments };
   }, [balances, prices, tokenBalances]);
 
   if (!hydrated || !wallet) return null;
