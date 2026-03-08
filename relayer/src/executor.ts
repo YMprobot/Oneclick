@@ -19,9 +19,17 @@ const P256_VERIFIER = '0x0000000000000000000000000000000000000100';
 export class Executor {
   private signers: Map<number, ethers.Wallet> = new Map();
   private privateKey: string;
+  /** Cache: "chainId:pubKeyX:pubKeyY" → wallet address */
+  private addressCache: Map<string, string> = new Map();
+  /** Cache: "chainId:walletAddress" → true (set once deployed) */
+  private deployedCache: Set<string> = new Set();
 
   constructor(privateKey: string) {
     this.privateKey = privateKey;
+  }
+
+  private cacheKey(chainId: number, pubKeyX: string, pubKeyY: string): string {
+    return `${chainId}:${pubKeyX}:${pubKeyY}`;
   }
 
   private getSigner(chainId: number): ethers.Wallet {
@@ -39,12 +47,19 @@ export class Executor {
     const chain = getChain(chainId);
     if (!chain) throw new Error(`Chain ${chainId} not registered`);
 
+    const key = this.cacheKey(chainId, pubKeyX, pubKeyY);
     const signer = this.getSigner(chainId);
     const factory = new ethers.Contract(chain.factoryAddress, FACTORY_ABI, signer);
 
-    const deployed = await factory.isDeployed(pubKeyX, pubKeyY);
+    const [deployed, walletAddress] = await Promise.all([
+      factory.isDeployed(pubKeyX, pubKeyY),
+      factory.getWalletAddress(pubKeyX, pubKeyY),
+    ]);
+    this.addressCache.set(key, walletAddress);
+
     if (deployed) {
-      return factory.getWalletAddress(pubKeyX, pubKeyY);
+      this.deployedCache.add(`${chainId}:${walletAddress}`);
+      return walletAddress;
     }
 
     const tx = await factory.deployWallet(
@@ -55,7 +70,7 @@ export class Executor {
     );
     await tx.wait();
 
-    const walletAddress: string = await factory.getWalletAddress(pubKeyX, pubKeyY);
+    this.deployedCache.add(`${chainId}:${walletAddress}`);
     return walletAddress;
   }
 
@@ -63,14 +78,39 @@ export class Executor {
     const chain = getChain(chainId);
     if (!chain) throw new Error(`Chain ${chainId} not registered`);
 
+    const key = this.cacheKey(chainId, pubKeyX, pubKeyY);
+
+    // Fast path: address + deployed both cached → 0 RPC calls
+    const cachedAddr = this.addressCache.get(key);
+    if (cachedAddr && this.deployedCache.has(`${chainId}:${cachedAddr}`)) {
+      return cachedAddr;
+    }
+
     const signer = this.getSigner(chainId);
     const factory = new ethers.Contract(chain.factoryAddress, FACTORY_ABI, signer);
 
-    const deployed = await factory.isDeployed(pubKeyX, pubKeyY);
-    if (deployed) {
-      return factory.getWalletAddress(pubKeyX, pubKeyY);
+    // If address cached but not confirmed deployed, only check isDeployed
+    if (cachedAddr) {
+      const deployed = await factory.isDeployed(pubKeyX, pubKeyY);
+      if (deployed) {
+        this.deployedCache.add(`${chainId}:${cachedAddr}`);
+        return cachedAddr;
+      }
+    } else {
+      // Parallel: isDeployed + getWalletAddress
+      const [deployed, walletAddress] = await Promise.all([
+        factory.isDeployed(pubKeyX, pubKeyY),
+        factory.getWalletAddress(pubKeyX, pubKeyY),
+      ]);
+      this.addressCache.set(key, walletAddress);
+      if (deployed) {
+        this.deployedCache.add(`${chainId}:${walletAddress}`);
+        return walletAddress;
+      }
     }
 
+    // Not deployed — deploy now
+    const walletAddress = this.addressCache.get(key)!;
     const tx = await factory.deployWallet(
       pubKeyX,
       pubKeyY,
@@ -79,18 +119,24 @@ export class Executor {
     );
     await tx.wait();
 
-    const walletAddress: string = await factory.getWalletAddress(pubKeyX, pubKeyY);
+    this.deployedCache.add(`${chainId}:${walletAddress}`);
     console.log(`Auto-deployed wallet ${walletAddress} on chain ${chainId}`);
     return walletAddress;
   }
 
   async getWalletAddress(chainId: number, pubKeyX: string, pubKeyY: string): Promise<string> {
+    const key = this.cacheKey(chainId, pubKeyX, pubKeyY);
+    const cached = this.addressCache.get(key);
+    if (cached) return cached;
+
     const chain = getChain(chainId);
     if (!chain) throw new Error(`Chain ${chainId} not registered`);
 
     const signer = this.getSigner(chainId);
     const factory = new ethers.Contract(chain.factoryAddress, FACTORY_ABI, signer);
-    return factory.getWalletAddress(pubKeyX, pubKeyY);
+    const addr: string = await factory.getWalletAddress(pubKeyX, pubKeyY);
+    this.addressCache.set(key, addr);
+    return addr;
   }
 
   async getNonce(chainId: number, walletAddress: string): Promise<bigint> {
