@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useWallet } from '@/context/WalletContext';
 import { useRouter } from 'next/navigation';
 
@@ -9,12 +9,12 @@ export function Header() {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
 
-  function handleDisconnect() {
+  const handleDisconnect = useCallback(() => {
     disconnect();
     router.push('/app');
-  }
+  }, [disconnect, router]);
 
-  async function handleCopyAddress() {
+  const handleCopyAddress = useCallback(async () => {
     if (!wallet?.address) return;
     try {
       await navigator.clipboard.writeText(wallet.address);
@@ -28,15 +28,15 @@ export function Header() {
     }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
-  }
+  }, [wallet?.address]);
 
   const shortAddress = wallet?.address
     ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`
     : 'No wallet';
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-900/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
+    <header className="sticky top-0 z-50 border-b border-gray-800/50 bg-gray-950/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
         <button
           onClick={() => router.push('/dashboard')}
           className="text-lg font-bold tracking-tight transition-colors hover:text-red-400"
@@ -47,13 +47,13 @@ export function Header() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleCopyAddress}
-              className="rounded-full bg-gray-800 px-3 py-1 font-mono text-xs text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
+              className="rounded-full bg-gray-800/60 px-3 py-1 font-mono text-xs text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
             >
               {copied ? 'Copied!' : shortAddress}
             </button>
             <button
               onClick={handleDisconnect}
-              className="text-sm text-gray-400 transition-colors hover:text-white"
+              className="text-sm text-gray-500 transition-colors hover:text-white"
             >
               Disconnect
             </button>

@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { RELAYER_URL } from '@/lib/constants';
-import { Header } from '@/components/Header';
-import { BalanceCard } from '@/components/BalanceCard';
-import { CopyAddress } from '@/components/CopyAddress';
+import { BottomNav } from '@/components/BottomNav';
+import { AssetList } from '@/components/AssetList';
+import type { Asset } from '@/components/AssetList';
+import { DistributionBar } from '@/components/DistributionBar';
 import { QuickActions } from '@/components/QuickActions';
 import { ReceiveModal } from '@/components/ReceiveModal';
 import { TransactionList } from '@/components/TransactionList';
@@ -38,11 +39,17 @@ interface TransactionRecord {
   timestamp: number;
 }
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function DashboardPage() {
   const { wallet, hydrated } = useWallet();
   const router = useRouter();
   const [balances, setBalances] = useState<ChainBalance[]>([]);
-  const [totalBalance, setTotalBalance] = useState('0.0000');
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showReceiveModal, setShowReceiveModal] = useState(false);
@@ -63,7 +70,6 @@ export default function DashboardPage() {
         fetch(`${RELAYER_URL}/prices`).catch(() => null),
       ]);
 
-      // Parse prices from relayer
       if (pricesRes?.ok) {
         try {
           const pricesData: { prices: Record<string, number> } = await pricesRes.json();
@@ -73,7 +79,7 @@ export default function DashboardPage() {
           }
           setPrices(priceMap);
         } catch {
-          // Price parse error — skip USD display
+          // Price parse error — skip
         }
       }
 
@@ -97,11 +103,8 @@ export default function DashboardPage() {
           };
         });
 
-        setBalances(chainBalances.length > 0 ? chainBalances : []);
-        const total = chainBalances.reduce((sum, c) => sum + parseFloat(c.balance), 0);
-        setTotalBalance(total.toFixed(4));
+        setBalances(chainBalances);
 
-        // Fetch token balances for each chain (uses already-parsed chainsData)
         if (wallet?.address && chainsData.length > 0) {
           const tokenResults: Record<number, TokenBalance[]> = {};
           await Promise.all(
@@ -117,18 +120,12 @@ export default function DashboardPage() {
                   }
                 }
               } catch {
-                // Skip token balances for this chain
+                // Skip
               }
             })
           );
           setTokenBalances(tokenResults);
         }
-      } else {
-        console.error('Relayer response not ok:', {
-          balance: balanceRes.status,
-          chains: chainsRes.status,
-        });
-        throw new Error('Relayer response not ok');
       }
 
       if (txRes.ok) {
@@ -137,9 +134,7 @@ export default function DashboardPage() {
       }
     } catch (err) {
       console.error('Dashboard fetch failed:', err);
-      // Show empty state instead of fake data
       setBalances([]);
-      setTotalBalance('0.0000');
     } finally {
       setIsLoading(false);
     }
@@ -151,96 +146,137 @@ export default function DashboardPage() {
       router.push('/app');
       return;
     }
-
     fetchData();
     const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, [wallet, hydrated, router, fetchData]);
 
-  const { totalUsd, hasPrices, balanceSummary } = useMemo(() => {
-    const totalUsd = balances.reduce((sum, b) => {
-      const price = prices[b.chainId] || 0;
-      return sum + parseFloat(b.balance) * price;
-    }, 0);
-    const hasPrices = Object.keys(prices).length > 0;
-    const balanceSummary = balances
-      .filter((b) => parseFloat(b.balance) > 0)
-      .map((b) => `${b.balance} ${b.nativeSymbol}`)
-      .join(' + ');
-    return { totalUsd, hasPrices, balanceSummary };
-  }, [balances, prices]);
+  // Build unified asset list
+  const { assets, totalUsd, segments } = useMemo(() => {
+    const assetMap = new Map<string, Asset>();
+
+    // Native tokens per chain
+    for (const chain of balances) {
+      const bal = parseFloat(chain.balance);
+      if (bal <= 0) continue;
+      const price = prices[chain.chainId] || 0;
+      const usd = bal * price;
+      const symbol = chain.nativeSymbol;
+
+      const existing = assetMap.get(symbol);
+      if (existing) {
+        const prevAmount = parseFloat(existing.amount);
+        assetMap.set(symbol, {
+          ...existing,
+          amount: (prevAmount + bal).toFixed(4),
+          usdValue: existing.usdValue + usd,
+        });
+      } else {
+        assetMap.set(symbol, {
+          symbol,
+          amount: bal.toFixed(4),
+          usdValue: usd,
+          color: symbol,
+        });
+      }
+    }
+
+    // ERC20 tokens
+    for (const [chainIdStr, tokens] of Object.entries(tokenBalances)) {
+      const chainId = Number(chainIdStr);
+      for (const t of tokens) {
+        const bal = Number(t.balance) / Math.pow(10, t.decimals);
+        if (bal <= 0) continue;
+        // Stablecoins = $1 per token
+        const isStable = ['USDC', 'USDT', 'DAI'].includes(t.symbol);
+        const usd = isStable ? bal : bal * (prices[chainId] || 0);
+
+        const existing = assetMap.get(t.symbol);
+        if (existing) {
+          const prevAmount = parseFloat(existing.amount);
+          assetMap.set(t.symbol, {
+            ...existing,
+            amount: (prevAmount + bal).toFixed(2),
+            usdValue: existing.usdValue + usd,
+          });
+        } else {
+          assetMap.set(t.symbol, {
+            symbol: t.symbol,
+            amount: bal.toFixed(2),
+            usdValue: usd,
+            color: t.symbol,
+          });
+        }
+      }
+    }
+
+    const assets = Array.from(assetMap.values()).sort((a, b) => b.usdValue - a.usdValue);
+    const totalUsd = assets.reduce((sum, a) => sum + a.usdValue, 0);
+
+    const segments = assets
+      .filter((a) => a.usdValue > 0)
+      .map((a) => ({
+        label: a.symbol,
+        percent: totalUsd > 0 ? (a.usdValue / totalUsd) * 100 : 0,
+        color: a.symbol,
+      }));
+
+    return { assets, totalUsd, segments };
+  }, [balances, prices, tokenBalances]);
 
   if (!hydrated || !wallet) return null;
 
   return (
-    <div className="min-h-screen bg-gray-950">
-      <Header />
-
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-        {/* Wallet hero card */}
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl shadow-red-500/5">
-          <div className="mb-1 text-center">
-            {isLoading ? (
-              <div className="mx-auto h-12 w-48 animate-pulse rounded bg-gray-800" />
-            ) : hasPrices ? (
-              <>
-                <p className="text-4xl font-bold">${totalUsd.toFixed(2)}</p>
-                <p className="mt-1 text-sm text-gray-400">
-                  {balanceSummary || 'No balance'}
-                </p>
-              </>
-            ) : (
-              <p className="text-4xl font-bold">
-                {balanceSummary || '0.0000'}
-              </p>
-            )}
-          </div>
-          <p className="mb-5 text-center text-sm text-gray-500">Total across all chains</p>
-
-          <div className="mb-4 flex justify-center">
-            <CopyAddress address={wallet.address} />
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-2">
-            {balances.map((chain) => (
-              <span
-                key={chain.chainId}
-                className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-3 py-1 text-sm text-gray-300"
-              >
-                ⛰️ {chain.chainName}
-              </span>
-            ))}
-            {isLoading && (
-              <div className="h-6 w-28 animate-pulse rounded-full bg-gray-800" />
-            )}
-          </div>
-        </div>
-
-        {/* Chain balances grid */}
-        <div className="grid gap-4 sm:grid-cols-2">
+    <div className="min-h-screen bg-gray-950 pb-20">
+      <main className="mx-auto max-w-lg px-4 pt-8">
+        {/* Greeting + Balance */}
+        <div className="mb-6">
+          <p className="mb-1 text-sm text-gray-400">{getGreeting()}</p>
           {isLoading ? (
-            <>
-              <div className="h-28 animate-pulse rounded-2xl border border-gray-800 bg-gray-900" />
-              <div className="h-28 animate-pulse rounded-2xl border border-gray-800 bg-gray-900" />
-            </>
+            <div className="h-10 w-48 animate-pulse rounded-lg bg-gray-800" />
           ) : (
-            balances.map((chain) => (
-              <BalanceCard
-                key={chain.chainId}
-                chainName={chain.chainName}
-                chainId={chain.chainId}
-                balance={chain.balance}
-                nativeSymbol={chain.nativeSymbol}
-                isLoading={false}
-                usdPrice={prices[chain.chainId]}
-                tokens={tokenBalances[chain.chainId]}
-              />
-            ))
+            <p className="text-4xl font-bold tracking-tight">
+              ${totalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
           )}
         </div>
 
+        {/* Distribution bar */}
+        {!isLoading && segments.length > 0 && (
+          <div className="mb-8">
+            <DistributionBar segments={segments} />
+          </div>
+        )}
+
         {/* Quick actions */}
-        <QuickActions onReceive={() => setShowReceiveModal(true)} />
+        <div className="mb-6">
+          <QuickActions onReceive={() => setShowReceiveModal(true)} />
+        </div>
+
+        {/* Asset list */}
+        <div className="mb-6 rounded-2xl border border-gray-800/50 bg-gray-900/50 p-2">
+          {isLoading ? (
+            <div className="space-y-3 p-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-10 w-10 animate-pulse rounded-full bg-gray-800" />
+                  <div className="flex-1">
+                    <div className="h-4 w-16 animate-pulse rounded bg-gray-800" />
+                    <div className="mt-1 h-3 w-24 animate-pulse rounded bg-gray-800" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <AssetList assets={assets} />
+          )}
+        </div>
+
+        {/* Recent transactions */}
+        <div className="rounded-2xl border border-gray-800/50 bg-gray-900/50 p-4">
+          <h2 className="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Recent Activity</h2>
+          <TransactionList transactions={transactions} />
+        </div>
 
         {showReceiveModal && (
           <ReceiveModal
@@ -248,13 +284,9 @@ export default function DashboardPage() {
             onClose={() => setShowReceiveModal(false)}
           />
         )}
-
-        {/* Recent activity */}
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-6">
-          <h2 className="mb-4 text-lg font-semibold">Recent Transactions</h2>
-          <TransactionList transactions={transactions} />
-        </div>
       </main>
+
+      <BottomNav />
     </div>
   );
 }
