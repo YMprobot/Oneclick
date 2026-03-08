@@ -110,17 +110,19 @@ async function fetchOnChainTxs(walletAddress: string, limit: number): Promise<Tr
         if (data.status !== '1' || !Array.isArray(data.result)) return;
 
         for (const tx of data.result) {
-          const status = tx.isError === '0' && tx.txreceipt_status === '1' ? 'confirmed' : 'failed';
-
-          // Try to decode wallet contract calls to get real target/value
+          // Only show user-facing transactions (execute calls on the wallet)
           const decoded = tx.input ? decodeWalletCall(tx.input) : null;
-          const isDeployWallet = tx.methodId === '0xc908f766';
+
+          // Skip internal/service txs (deployWallet, unknown contract calls)
+          if (!decoded) continue;
+
+          const status = tx.isError === '0' && tx.txreceipt_status === '1' ? 'confirmed' : 'failed';
 
           results.push({
             id: `${chain.chainId}:${tx.hash}`,
             walletAddress,
-            target: decoded?.target || tx.to || '',
-            value: decoded?.value || tx.value,
+            target: decoded.target,
+            value: decoded.value,
             chainId: chain.chainId,
             chainName: chain.name,
             nativeSymbol: chain.nativeSymbol,
@@ -128,7 +130,7 @@ async function fetchOnChainTxs(walletAddress: string, limit: number): Promise<Tr
             hash: tx.hash,
             status,
             timestamp: parseInt(tx.timeStamp, 10) * 1000,
-            txType: isDeployWallet ? undefined : (decoded?.txType as 'send' | undefined),
+            txType: 'send',
           });
         }
       } catch {
