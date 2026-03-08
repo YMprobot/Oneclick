@@ -98,16 +98,31 @@ export async function planTransaction(
     // Not enough! Need to swap AVAX -> this token first
     const shortfall = transferAmount - tokenBalance;
 
-    // Add 30% buffer for price movement & DEX slippage (testnet pools are thin)
-    const swapAmountNeeded = shortfall + (shortfall * 30n) / 100n;
+    // Add 5% buffer for slippage
+    const swapAmountNeeded = shortfall + (shortfall * 5n) / 100n;
 
-    // Estimate AVAX needed using approximate price ($25)
-    const avaxPriceUsd = 25;
+    // Estimate AVAX needed using real price from DeFiLlama (fetched at request time)
+    let avaxPriceUsd = 8.84; // fallback
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const priceRes = await fetch('https://coins.llama.fi/prices/current/coingecko:avalanche-2', {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (priceRes.ok) {
+        const priceData: { coins: Record<string, { price: number }> } = await priceRes.json();
+        const p = priceData.coins['coingecko:avalanche-2']?.price;
+        if (typeof p === 'number' && p > 0) avaxPriceUsd = p;
+      }
+    } catch {
+      // Use fallback price
+    }
     const usdNeeded =
       Number(swapAmountNeeded) / 10 ** decimals;
     const avaxNeeded = usdNeeded / avaxPriceUsd;
-    // Add 20% buffer on AVAX side too (testnet DEX liquidity is low)
-    const avaxWithBuffer = avaxNeeded * 1.2;
+    // Add 5% buffer on AVAX side for price movement
+    const avaxWithBuffer = avaxNeeded * 1.05;
     const avaxWei = BigInt(
       Math.ceil(avaxWithBuffer * 1e18)
     );
