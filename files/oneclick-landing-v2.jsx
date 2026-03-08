@@ -1,18 +1,16 @@
-'use client';
-import Link from 'next/link';
 import { useState, useEffect, useRef } from "react";
 
 // ─── Theme ──────────────────────────────────────────────
 const C = {
-  bg: "#030712", card: "#111827", cardHover: "#1f2937",
-  accent: "#ef4444", accentGlow: "rgba(239,68,68,0.12)", accentSoft: "#f87171",
-  text: "#ffffff", muted: "#9ca3af", dim: "#6b7280",
-  border: "#1f2937", borderHover: "#374151",
+  bg: "#07070d", card: "#0f0f1a", cardHover: "#161625",
+  accent: "#e84142", accentGlow: "rgba(232,65,66,0.12)", accentSoft: "#ff6b6b",
+  text: "#eaeaf0", muted: "#7c7c96", dim: "#4a4a62",
+  border: "#1a1a2e", borderHover: "#2a2a44",
   green: "#22c55e", blue: "#3b82f6", purple: "#a855f7", amber: "#f59e0b",
 };
 
-function useInView(t = 0.1): [React.RefObject<HTMLDivElement | null>, boolean] {
-  const ref = useRef<HTMLDivElement | null>(null);
+function useInView(t = 0.1) {
+  const ref = useRef(null);
   const [v, setV] = useState(false);
   useEffect(() => {
     const el = ref.current;
@@ -24,7 +22,7 @@ function useInView(t = 0.1): [React.RefObject<HTMLDivElement | null>, boolean] {
   return [ref, v];
 }
 
-function Reveal({ children, delay = 0, className = "", style = {} }: { children: React.ReactNode; delay?: number; className?: string; style?: React.CSSProperties }) {
+function Reveal({ children, delay = 0, className = "", style = {} }) {
   const [ref, v] = useInView(0.08);
   return (
     <div ref={ref} className={className} style={{
@@ -61,18 +59,18 @@ function Hero() {
 
         <h1 style={{ fontSize: "clamp(38px, 6.5vw, 72px)", fontWeight: 800, lineHeight: 1.06, letterSpacing: "-0.04em", color: C.text, margin: "0 0 20px" }}>
           One Fingerprint.<br/>
-          <span style={{ color: C.accent }}>Every Asset.</span>
+          <span style={{ background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Every Asset.</span>
         </h1>
 
         <p style={{ fontSize: "clamp(15px, 2vw, 19px)", color: C.muted, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 36px" }}>
-          Smart wallet for Avalanche that replaces seed phrases with Face ID.
+          Smart wallet for Avalanche that replaces seed phrases with Face ID. 
           Invest in real-world assets, trade tokens, play Web3 games — no crypto knowledge, no gas fees, no network switching.
         </p>
 
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <Link href="/app" style={{ background: C.accent, color: "#fff", padding: "13px 28px", borderRadius: 10, textDecoration: "none", fontSize: 15, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 8, boxShadow: `0 6px 28px ${C.accentGlow}` }}>
+          <a href="https://oneclick-orcin-nine.vercel.app" target="_blank" rel="noreferrer" style={{ background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, color: "#fff", padding: "13px 28px", borderRadius: 10, textDecoration: "none", fontSize: 15, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 8, boxShadow: `0 6px 28px ${C.accentGlow}` }}>
             Try Demo <Arrow/>
-          </Link>
+          </a>
           <a href="https://github.com/YMprobot/Oneclick" target="_blank" rel="noreferrer" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.text, padding: "13px 28px", borderRadius: 10, textDecoration: "none", fontSize: 15, fontWeight: 600 }}>
             Documentation
           </a>
@@ -81,7 +79,7 @@ function Hero() {
         <div style={{ display: "flex", gap: 40, justifyContent: "center", marginTop: 56, flexWrap: "wrap" }}>
           {[["3", "Blockchains"], ["0", "Seed Phrases"], ["1 Tap", "To Invest"], ["<2s", "Transaction"]].map(([v, l], i) => (
             <div key={i} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", color: C.accent }}>{v}</div>
+              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{v}</div>
               <div style={{ fontSize: 12, color: C.dim, marginTop: 3, fontWeight: 500 }}>{l}</div>
             </div>
           ))}
@@ -145,8 +143,7 @@ function ProblemSolution() {
 
 // ─── Block 3: Three Verticals (Tabs) ────────────────────
 function Verticals() {
-  type Vertical = "rwa" | "gaming" | "defi";
-  const [active, setActive] = useState<Vertical>("rwa");
+  const [active, setActive] = useState("rwa");
   const data = {
     rwa: {
       label: "RWA",
@@ -214,7 +211,7 @@ function Verticals() {
         {/* Tabs */}
         <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 32 }}>
           {Object.entries(data).map(([key, val]) => (
-            <button key={key} onClick={() => setActive(key as Vertical)} style={{
+            <button key={key} onClick={() => setActive(key)} style={{
               padding: "10px 28px", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer",
               background: active === key ? val.color + "18" : "transparent",
               border: `1px solid ${active === key ? val.color + "40" : C.border}`,
@@ -287,7 +284,7 @@ function HowAndCompare() {
     { feature: "Vendor lock-in", metamask: false, biconomy: false, abstract: "Abstract chain", oneclick: "None (open source)" },
   ];
 
-  function CellVal({ val }: { val: boolean | string }) {
+  function CellVal({ val }) {
     if (val === true) return <Check/>;
     if (val === false) return <X/>;
     return <span style={{ fontSize: 12.5, fontWeight: 500 }}>{val}</span>;
@@ -378,9 +375,9 @@ function SDKRoadmapFooter() {
               textAlign: "left", maxWidth: 540, margin: "0 auto",
               fontFamily: "'SF Mono','Fira Code',monospace", fontSize: 13, lineHeight: 1.9,
             }}>
-              <div><span style={{ color: "#c678dd" }}>import</span> <span style={{ color: "#e5c07b" }}>{"{ connect }"}</span> <span style={{ color: "#c678dd" }}>from</span> <span style={{ color: "#98c379" }}>&quot;oneclick-wallet-sdk&quot;</span>;</div>
+              <div><span style={{ color: "#c678dd" }}>import</span> <span style={{ color: "#e5c07b" }}>{"{ connect }"}</span> <span style={{ color: "#c678dd" }}>from</span> <span style={{ color: "#98c379" }}>"oneclick-wallet-sdk"</span>;</div>
               <div style={{ height: 6 }}/>
-              <div><span style={{ color: "#c678dd" }}>const</span> <span style={{ color: "#e06c75" }}>wallet</span> = <span style={{ color: "#c678dd" }}>await</span> <span style={{ color: "#61afef" }}>connect</span>({"{"} <span style={{ color: "#e06c75" }}>relayerUrl</span>: <span style={{ color: "#98c379" }}>&quot;...&quot;</span> {"}"});</div>
+              <div><span style={{ color: "#c678dd" }}>const</span> <span style={{ color: "#e06c75" }}>wallet</span> = <span style={{ color: "#c678dd" }}>await</span> <span style={{ color: "#61afef" }}>connect</span>({"{"} <span style={{ color: "#e06c75" }}>relayerUrl</span>: <span style={{ color: "#98c379" }}>"..."</span> {"}"});</div>
               <div style={{ color: C.dim }}>// User taps fingerprint — wallet ready</div>
               <div><span style={{ color: "#c678dd" }}>await</span> <span style={{ color: "#e06c75" }}>wallet</span>.<span style={{ color: "#61afef" }}>execute</span>({"{"} <span style={{ color: "#e06c75" }}>target</span>, <span style={{ color: "#e06c75" }}>data</span>, <span style={{ color: "#e06c75" }}>chainId</span>: <span style={{ color: "#d19a66" }}>43114</span> {"}"});</div>
             </div>
@@ -422,14 +419,14 @@ function SDKRoadmapFooter() {
         {/* Footer */}
         <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 64, paddingTop: 32, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: "-0.02em", color: C.text }}>OneClick</span>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, color: "#fff" }}>1</div>
+            <span style={{ fontWeight: 700, fontSize: 15, color: C.text }}>OneClick</span>
             <span style={{ fontSize: 12, color: C.dim, marginLeft: 6 }}>One Fingerprint. Every Asset.</span>
           </div>
           <div style={{ display: "flex", gap: 20 }}>
-            {[["GitHub", "https://github.com/YMprobot/Oneclick"], ["npm", "https://www.npmjs.com/package/oneclick-wallet-sdk"]].map(([l, h]) => (
+            {[["GitHub", "https://github.com/YMprobot/Oneclick"], ["npm", "https://www.npmjs.com/package/oneclick-wallet-sdk"], ["Demo", "https://oneclick-orcin-nine.vercel.app"]].map(([l, h]) => (
               <a key={l} href={h} target="_blank" rel="noreferrer" style={{ color: C.muted, textDecoration: "none", fontSize: 12, fontWeight: 500 }}>{l}</a>
             ))}
-            <Link href="/app" style={{ color: C.muted, textDecoration: "none", fontSize: 12, fontWeight: 500 }}>Demo</Link>
           </div>
           <div style={{ fontSize: 11, color: C.dim }}>Built for Avalanche Build Games 2026</div>
         </div>
@@ -448,26 +445,27 @@ function Nav() {
   }, []);
   return (
     <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-      background: scrolled ? "rgba(3,7,18,0.92)" : "transparent",
+      background: scrolled ? "rgba(7,7,13,0.92)" : "transparent",
       backdropFilter: scrolled ? "blur(14px)" : "none",
       borderBottom: scrolled ? `1px solid ${C.border}` : "1px solid transparent",
       transition: "all 0.3s" }}>
       <div style={{ maxWidth: 1120, margin: "0 auto", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 17, letterSpacing: "-0.02em", color: C.text }}>OneClick</span>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15, color: "#fff" }}>1</div>
+          <span style={{ fontWeight: 700, fontSize: 17, color: C.text, letterSpacing: "-0.02em" }}>OneClick</span>
         </div>
-        <Link href="/app" style={{
-          background: C.accent, color: "#fff", padding: "7px 18px",
+        <a href="https://oneclick-orcin-nine.vercel.app" target="_blank" rel="noreferrer" style={{
+          background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, color: "#fff", padding: "7px 18px",
           borderRadius: 8, textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
           Launch App
-        </Link>
+        </a>
       </div>
     </nav>
   );
 }
 
 // ─── App ────────────────────────────────────────────────
-export default function LandingPage() {
+export default function OneClickLanding() {
   return (
     <div style={{ background: C.bg, color: C.text, minHeight: "100vh",
       fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif" }}>

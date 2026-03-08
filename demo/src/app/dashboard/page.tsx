@@ -148,7 +148,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!hydrated) return;
     if (!wallet) {
-      router.push('/');
+      router.push('/app');
       return;
     }
 

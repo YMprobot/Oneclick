@@ -11,7 +11,7 @@ export function Header() {
 
   function handleDisconnect() {
     disconnect();
-    router.push('/');
+    router.push('/app');
   }
 
   async function handleCopyAddress() {

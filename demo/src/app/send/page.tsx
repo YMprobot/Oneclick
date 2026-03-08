@@ -91,7 +91,7 @@ export default function SendPage() {
   useEffect(() => {
     if (!hydrated) return;
     if (!wallet) {
-      router.push('/');
+      router.push('/app');
       return;
     }
 
