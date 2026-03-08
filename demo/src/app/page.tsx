@@ -3,62 +3,78 @@
 import Link from 'next/link';
 
 const C = {
-  bg: '#030712',       // matches gray-950 from Tailwind
-  card: '#111827',     // matches gray-900
-  border: '#1f2937',   // matches gray-800
-  accent: '#ef4444',   // matches red-500 used in app buttons
-  accentHover: '#dc2626',
+  bg: '#07070d',
+  card: '#0f0f1a',
+  cardAlt: '#141422',
+  border: '#1a1a2e',
+  accent: '#e84142',
+  accentGlow: 'rgba(232, 65, 66, 0.15)',
+  green: '#34d399',
   text: '#ffffff',
-  muted: '#9ca3af',    // gray-400
-  dimmed: '#6b7280',   // gray-500
+  muted: '#9ca3af',
+  dimmed: '#6b7280',
 };
 
 export default function LandingPage() {
   return (
     <>
       <style>{`
-        .landing * { box-sizing: border-box; }
-        .landing { font-family: inherit; }
-        .landing-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
-        .landing-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .landing-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+        .lp * { box-sizing: border-box; margin: 0; padding: 0; }
+        .lp { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .lp a { transition: opacity 0.2s; }
+        .lp a:hover { opacity: 0.85; }
+        .lp-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .lp-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+        .lp-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+        .lp-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+        .lp-table { width: 100%; border-collapse: collapse; }
+        .lp-table th, .lp-table td { padding: 14px 20px; text-align: left; border-bottom: 1px solid ${C.border}; font-size: 14px; }
+        .lp-table th { color: ${C.dimmed}; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .lp-table td:first-child { font-weight: 600; color: ${C.text}; }
+        .lp-table td { color: ${C.muted}; }
+        .lp-check { color: ${C.green}; font-weight: 700; }
+        .lp-cross { color: ${C.dimmed}; }
+        .lp-highlight-col { background: rgba(232, 65, 66, 0.05); }
         @media (max-width: 1023px) {
-          .landing-grid-4 { grid-template-columns: repeat(2, 1fr); }
+          .lp-grid-4, .lp-steps { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 767px) {
-          .landing-grid-4 { grid-template-columns: 1fr; }
-          .landing-grid-3 { grid-template-columns: 1fr; }
-          .landing-grid-2 { grid-template-columns: 1fr; }
-          .landing-hero-title { font-size: 2.5rem !important; }
-          .landing-nav-links { display: none !important; }
-          .landing-footer-grid { grid-template-columns: 1fr !important; text-align: center; }
-          .landing-hero-buttons { flex-direction: column; }
+          .lp-grid-4, .lp-grid-3, .lp-grid-2, .lp-steps { grid-template-columns: 1fr; }
+          .lp-hero-title { font-size: 2.5rem !important; line-height: 1.15 !important; }
+          .lp-nav-links { display: none !important; }
+          .lp-hero-btns { flex-direction: column; align-items: stretch; }
+          .lp-footer-grid { grid-template-columns: 1fr !important; text-align: center; gap: 32px !important; }
+          .lp-problem-grid { grid-template-columns: 1fr !important; }
+          .lp-table-wrap { overflow-x: auto; }
+          .lp-stats { grid-template-columns: repeat(2, 1fr) !important; }
         }
       `}</style>
 
-      <div className="landing" style={{ background: C.bg, color: C.text, minHeight: '100vh' }}>
-        {/* Nav */}
+      <div className="lp" style={{ background: C.bg, color: C.text, minHeight: '100vh' }}>
+
+        {/* ── Nav ── */}
         <nav style={{
           position: 'sticky', top: 0, zIndex: 50,
           background: `${C.bg}ee`, backdropFilter: 'blur(12px)',
           borderBottom: `1px solid ${C.border}`,
         }}>
           <div style={{
-            maxWidth: 1200, margin: '0 auto', padding: '16px 24px',
+            maxWidth: 1140, margin: '0 auto', padding: '14px 24px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
-            <span style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em' }}>
+            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>
               OneClick
             </span>
-            <div className="landing-nav-links" style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
+            <div className="lp-nav-links" style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
               <a href="#features" style={{ color: C.muted, textDecoration: 'none', fontSize: 14 }}>Features</a>
               <a href="#how-it-works" style={{ color: C.muted, textDecoration: 'none', fontSize: 14 }}>How It Works</a>
               <a href="#security" style={{ color: C.muted, textDecoration: 'none', fontSize: 14 }}>Security</a>
+              <a href="#compare" style={{ color: C.muted, textDecoration: 'none', fontSize: 14 }}>Compare</a>
               <a href="#sdk" style={{ color: C.muted, textDecoration: 'none', fontSize: 14 }}>SDK</a>
               <Link href="/app" style={{
                 background: C.accent, color: '#fff', padding: '10px 24px',
                 borderRadius: 12, fontSize: 14, fontWeight: 600,
-                textDecoration: 'none', transition: 'background 0.2s',
+                textDecoration: 'none',
               }}>
                 Launch App
               </Link>
@@ -66,154 +82,187 @@ export default function LandingPage() {
           </div>
         </nav>
 
-        {/* Hero */}
-        <section style={{
-          maxWidth: 1200, margin: '0 auto', padding: '120px 24px 80px',
-          textAlign: 'center',
-        }}>
+        {/* ── Hero ── */}
+        <section style={{ maxWidth: 1140, margin: '0 auto', padding: '100px 24px 60px', textAlign: 'center' }}>
           <div style={{
             display: 'inline-block', padding: '6px 16px', borderRadius: 999,
-            background: `${C.accent}15`, border: `1px solid ${C.accent}30`,
-            fontSize: 13, fontWeight: 600, color: C.accent, marginBottom: 24,
+            background: C.accentGlow, border: `1px solid rgba(232,65,66,0.25)`,
+            fontSize: 13, fontWeight: 600, color: C.accent, marginBottom: 28,
           }}>
             Built for Avalanche L1s
           </div>
-          <h1 className="landing-hero-title" style={{
-            fontSize: '4rem', fontWeight: 800, lineHeight: 1.1,
-            letterSpacing: '-0.03em', marginBottom: 24,
+          <h1 className="lp-hero-title" style={{
+            fontSize: '4rem', fontWeight: 800, lineHeight: 1.08,
+            letterSpacing: '-0.03em', marginBottom: 20,
           }}>
             One Fingerprint.<br />
             <span style={{ color: C.accent }}>Every Chain.</span>
           </h1>
           <p style={{
-            fontSize: 20, color: C.muted, maxWidth: 600,
-            margin: '0 auto 48px', lineHeight: 1.6,
+            fontSize: 19, color: C.muted, maxWidth: 560,
+            margin: '0 auto 44px', lineHeight: 1.6,
           }}>
-            Smart wallet with passkey authentication. No seed phrases, no gas fees,
-            no network switching. Just your fingerprint.
+            The smart wallet that replaces seed phrases with biometrics.
+            No gas fees. No network switching. Just your fingerprint.
           </p>
-          <div className="landing-hero-buttons" style={{
-            display: 'flex', gap: 16, justifyContent: 'center',
-          }}>
+          <div className="lp-hero-btns" style={{ display: 'flex', gap: 14, justifyContent: 'center' }}>
             <Link href="/app" style={{
               background: C.accent, color: '#fff', padding: '16px 40px',
-              borderRadius: 14, fontSize: 18, fontWeight: 700,
-              textDecoration: 'none', transition: 'background 0.2s',
+              borderRadius: 14, fontSize: 17, fontWeight: 700,
+              textDecoration: 'none',
             }}>
               Try Demo
             </Link>
             <a href="https://github.com/YMprobot/Oneclick" target="_blank" rel="noopener noreferrer" style={{
               background: 'transparent', color: C.text,
-              padding: '16px 40px', borderRadius: 14, fontSize: 18,
+              padding: '16px 40px', borderRadius: 14, fontSize: 17,
               fontWeight: 700, textDecoration: 'none',
-              border: `1px solid ${C.border}`, transition: 'border-color 0.2s',
+              border: `1px solid ${C.border}`,
             }}>
               Documentation
             </a>
           </div>
         </section>
 
-        {/* Features */}
-        <section id="features" style={{
-          maxWidth: 1200, margin: '0 auto', padding: '80px 24px',
-        }}>
-          <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
+        {/* ── Stats ── */}
+        <section style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px 80px' }}>
+          <div className="lp-stats" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20,
+          }}>
+            {[
+              { value: '3', label: 'Blockchains' },
+              { value: '0', label: 'Seed Phrases' },
+              { value: '1 Tap', label: 'To Transact' },
+              { value: '<2s', label: 'Transaction' },
+            ].map((s) => (
+              <div key={s.label} style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 14, padding: '28px 20px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 32, fontWeight: 800, color: C.accent, marginBottom: 6 }}>
+                  {s.value}
+                </div>
+                <div style={{ fontSize: 13, color: C.muted, fontWeight: 500 }}>
+                  {s.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ── Problem vs Solution ── */}
+        <section id="features" style={{ maxWidth: 1140, margin: '0 auto', padding: '60px 24px 80px' }}>
+          <h2 style={{ fontSize: 34, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
             Why OneClick?
           </h2>
-          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 64, fontSize: 18 }}>
-            Everything a wallet should be. Nothing it shouldn&apos;t.
+          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 56, fontSize: 17 }}>
+            Crypto wallets are broken. We fixed them.
           </p>
-          <div className="landing-grid-4">
-            {[
-              {
-                icon: '\uD83D\uDD10',
-                title: 'Passkey Auth',
-                desc: 'FaceID / TouchID login. No seed phrases, no browser extensions. Your biometrics are your keys.',
-              },
-              {
-                icon: '\u26D3\uFE0F',
-                title: 'Multi-Chain',
-                desc: 'One wallet address across every Avalanche L1. Same fingerprint works everywhere.',
-              },
-              {
-                icon: '\u26FD',
-                title: 'Gasless',
-                desc: 'Paymaster sponsors gas fees. Users never need to hold native tokens just to transact.',
-              },
-              {
-                icon: '\uD83D\uDD04',
-                title: 'Smart Routing',
-                desc: 'Send any token on any chain. OneClick automatically swaps and bridges behind the scenes.',
-              },
-            ].map((f) => (
-              <div key={f.title} style={{
-                background: C.card, border: `1px solid ${C.border}`,
-                borderRadius: 16, padding: 32,
+          <div className="lp-problem-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+            {/* Problem */}
+            <div style={{
+              background: C.card, border: `1px solid ${C.border}`,
+              borderRadius: 16, padding: 32,
+            }}>
+              <div style={{
+                display: 'inline-block', padding: '4px 12px', borderRadius: 8,
+                background: 'rgba(239,68,68,0.1)', color: '#f87171',
+                fontSize: 12, fontWeight: 700, marginBottom: 20,
               }}>
-                <div style={{ fontSize: 32, marginBottom: 16 }}>{f.icon}</div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{f.title}</h3>
-                <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.6 }}>{f.desc}</p>
+                PROBLEM
               </div>
-            ))}
+              <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
+                7 steps with MetaMask
+              </h3>
+              <ol style={{ color: C.muted, fontSize: 14, lineHeight: 2, paddingLeft: 20 }}>
+                <li>Install browser extension</li>
+                <li>Write down 12-word seed phrase</li>
+                <li>Add custom network RPC</li>
+                <li>Get native token for gas</li>
+                <li>Approve token spending</li>
+                <li>Confirm gas fee popup</li>
+                <li>Sign transaction</li>
+              </ol>
+            </div>
+            {/* Solution */}
+            <div style={{
+              background: C.card, border: `1px solid ${C.accent}30`,
+              borderRadius: 16, padding: 32,
+              boxShadow: `0 0 40px ${C.accentGlow}`,
+            }}>
+              <div style={{
+                display: 'inline-block', padding: '4px 12px', borderRadius: 8,
+                background: C.accentGlow, color: C.accent,
+                fontSize: 12, fontWeight: 700, marginBottom: 20,
+              }}>
+                SOLUTION
+              </div>
+              <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
+                1 step with OneClick
+              </h3>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 16,
+                background: `${C.accent}10`, borderRadius: 12, padding: '20px 24px',
+                marginBottom: 20,
+              }}>
+                <span style={{ fontSize: 36 }}>{'\uD83D\uDD90\uFE0F'}</span>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Tap your fingerprint</div>
+                  <div style={{ color: C.muted, fontSize: 14 }}>That&apos;s it. Wallet created, transaction signed, gas paid.</div>
+                </div>
+              </div>
+              <ul style={{ color: C.muted, fontSize: 14, lineHeight: 2, listStyle: 'none', padding: 0 }}>
+                <li style={{ color: C.green }}>&#10003; No extension to install</li>
+                <li style={{ color: C.green }}>&#10003; No seed phrase to lose</li>
+                <li style={{ color: C.green }}>&#10003; No gas tokens needed</li>
+                <li style={{ color: C.green }}>&#10003; No network switching</li>
+              </ul>
+            </div>
           </div>
         </section>
 
-        {/* How It Works */}
-        <section id="how-it-works" style={{
-          maxWidth: 1200, margin: '0 auto', padding: '80px 24px',
-        }}>
-          <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
+        {/* ── How It Works ── */}
+        <section id="how-it-works" style={{ maxWidth: 1140, margin: '0 auto', padding: '80px 24px' }}>
+          <h2 style={{ fontSize: 34, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
             How It Works
           </h2>
-          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 64, fontSize: 18 }}>
-            Three steps. Zero complexity.
+          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 56, fontSize: 17 }}>
+            Four steps. Zero complexity.
           </p>
-          <div className="landing-grid-3">
+          <div className="lp-steps">
             {[
-              {
-                step: '01',
-                title: 'Create Wallet',
-                desc: 'Tap "Create Wallet" and scan your fingerprint. A P256 key pair is generated in your device\'s secure enclave. That\'s it.',
-              },
-              {
-                step: '02',
-                title: 'Send & Swap',
-                desc: 'Enter an address and amount. OneClick finds the best route, handles gas, and executes. You just confirm with your fingerprint.',
-              },
-              {
-                step: '03',
-                title: 'Works Everywhere',
-                desc: 'Same wallet on every Avalanche L1. No network switching. No bridging UX. Your address follows you.',
-              },
+              { num: '01', icon: '\uD83D\uDCF1', title: 'Open App', desc: 'Visit the app in any browser. No downloads, no extensions. Works on mobile and desktop.' },
+              { num: '02', icon: '\uD83D\uDD90\uFE0F', title: 'Tap Finger', desc: 'FaceID or TouchID creates a P256 key pair in your device\'s secure enclave. Your wallet is born.' },
+              { num: '03', icon: '\uD83D\uDCB0', title: 'Fund Wallet', desc: 'Send any token to your address. Same address works on every Avalanche L1 chain automatically.' },
+              { num: '04', icon: '\u26A1', title: 'Transact', desc: 'Send, swap, or interact with dApps. Confirm with fingerprint. Gas is sponsored. Done.' },
             ].map((s) => (
-              <div key={s.step} style={{
+              <div key={s.num} style={{
                 background: C.card, border: `1px solid ${C.border}`,
-                borderRadius: 16, padding: 32, position: 'relative',
+                borderRadius: 16, padding: 28, position: 'relative',
               }}>
                 <div style={{
-                  fontSize: 64, fontWeight: 900, color: `${C.accent}15`,
-                  position: 'absolute', top: 16, right: 24, lineHeight: 1,
+                  fontSize: 56, fontWeight: 900, color: `${C.accent}12`,
+                  position: 'absolute', top: 12, right: 20, lineHeight: 1,
                 }}>
-                  {s.step}
+                  {s.num}
                 </div>
-                <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{s.title}</h3>
-                <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.7 }}>{s.desc}</p>
+                <div style={{ fontSize: 32, marginBottom: 14 }}>{s.icon}</div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 8 }}>{s.title}</h3>
+                <p style={{ color: C.muted, fontSize: 13, lineHeight: 1.7 }}>{s.desc}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Security */}
-        <section id="security" style={{
-          maxWidth: 1200, margin: '0 auto', padding: '80px 24px',
-        }}>
-          <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
+        {/* ── Security ── */}
+        <section id="security" style={{ maxWidth: 1140, margin: '0 auto', padding: '80px 24px' }}>
+          <h2 style={{ fontSize: 34, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
             Your keys. Your device. Period.
           </h2>
-          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 64, fontSize: 18 }}>
+          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 56, fontSize: 17 }}>
             OneClick is fully non-custodial. We never touch your private keys.
           </p>
-          <div className="landing-grid-3">
+          <div className="lp-grid-3">
             {[
               {
                 icon: '\uD83D\uDEE1\uFE0F',
@@ -221,7 +270,7 @@ export default function LandingPage() {
                 desc: 'P256 keys generated and stored in your device\u2019s secure hardware. Same chip that protects Apple Pay and Face ID. Physically impossible to extract.',
               },
               {
-                icon: '\u26D3\uFE0F',
+                icon: '\u2693',
                 title: 'On-chain Verification',
                 desc: 'Every transaction verified on-chain via the secp256r1 precompile (Granite upgrade). The blockchain itself checks your fingerprint signature. No trusted middleman.',
               },
@@ -236,60 +285,105 @@ export default function LandingPage() {
                 borderRadius: 16, padding: 32,
               }}>
                 <div style={{ fontSize: 32, marginBottom: 16 }}>{s.icon}</div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{s.title}</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>{s.title}</h3>
                 <p style={{ color: C.muted, fontSize: 14, lineHeight: 1.7 }}>{s.desc}</p>
               </div>
             ))}
           </div>
-          <p style={{
-            textAlign: 'center', color: C.dimmed, marginTop: 48, fontSize: 14,
-          }}>
+          <p style={{ textAlign: 'center', color: C.dimmed, marginTop: 40, fontSize: 14 }}>
             Security audit completed. Contracts verified on Snowtrace.{' '}
-            <a
-              href="https://github.com/YMprobot/Oneclick"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: C.accent, textDecoration: 'none' }}
-            >
+            <a href="https://github.com/YMprobot/Oneclick" target="_blank" rel="noopener noreferrer"
+              style={{ color: C.accent, textDecoration: 'none' }}>
               Open source on GitHub.
             </a>
           </p>
         </section>
 
-        {/* SDK */}
-        <section id="sdk" style={{
-          maxWidth: 1200, margin: '0 auto', padding: '80px 24px',
-        }}>
-          <h2 style={{ fontSize: 36, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
+        {/* ── Comparison Table ── */}
+        <section id="compare" style={{ maxWidth: 900, margin: '0 auto', padding: '80px 24px' }}>
+          <h2 style={{ fontSize: 34, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
+            How We Compare
+          </h2>
+          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 48, fontSize: 17 }}>
+            OneClick vs the competition.
+          </p>
+          <div className="lp-table-wrap" style={{
+            background: C.card, border: `1px solid ${C.border}`,
+            borderRadius: 16, overflow: 'hidden',
+          }}>
+            <table className="lp-table">
+              <thead>
+                <tr>
+                  <th>Feature</th>
+                  <th className="lp-highlight-col">OneClick</th>
+                  <th>MetaMask</th>
+                  <th>Biconomy</th>
+                  <th>Abstract</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { feature: 'Passkey / Biometric Login', oneclick: true, metamask: false, biconomy: true, abstract: true },
+                  { feature: 'No Seed Phrase', oneclick: true, metamask: false, biconomy: false, abstract: true },
+                  { feature: 'Gasless Transactions', oneclick: true, metamask: false, biconomy: true, abstract: true },
+                  { feature: 'Multi-chain Same Address', oneclick: true, metamask: false, biconomy: false, abstract: false },
+                  { feature: 'No Browser Extension', oneclick: true, metamask: false, biconomy: true, abstract: true },
+                  { feature: 'Smart Routing / Auto-swap', oneclick: true, metamask: false, biconomy: false, abstract: false },
+                  { feature: 'Avalanche L1 Native', oneclick: true, metamask: false, biconomy: false, abstract: false },
+                  { feature: 'Open Source', oneclick: true, metamask: true, biconomy: true, abstract: false },
+                ].map((row) => (
+                  <tr key={row.feature}>
+                    <td>{row.feature}</td>
+                    <td className="lp-highlight-col">
+                      <span className="lp-check">&#10003;</span>
+                    </td>
+                    <td>{row.metamask
+                      ? <span className="lp-check">&#10003;</span>
+                      : <span className="lp-cross">&#10007;</span>}
+                    </td>
+                    <td>{row.biconomy
+                      ? <span className="lp-check">&#10003;</span>
+                      : <span className="lp-cross">&#10007;</span>}
+                    </td>
+                    <td>{row.abstract
+                      ? <span className="lp-check">&#10003;</span>
+                      : <span className="lp-cross">&#10007;</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* ── SDK ── */}
+        <section id="sdk" style={{ maxWidth: 1140, margin: '0 auto', padding: '80px 24px' }}>
+          <h2 style={{ fontSize: 34, fontWeight: 800, textAlign: 'center', marginBottom: 16, letterSpacing: '-0.02em' }}>
             Integrate in Minutes
           </h2>
-          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 48, fontSize: 18 }}>
+          <p style={{ textAlign: 'center', color: C.muted, marginBottom: 48, fontSize: 17 }}>
             Add OneClick to your dApp with a few lines of code.
           </p>
           <div style={{
-            maxWidth: 700, margin: '0 auto', background: C.card,
+            maxWidth: 680, margin: '0 auto', background: C.card,
             border: `1px solid ${C.border}`, borderRadius: 16, overflow: 'hidden',
           }}>
             <div style={{
               padding: '12px 20px', borderBottom: `1px solid ${C.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             }}>
-              <span style={{ fontSize: 13, color: C.dimmed }}>Terminal</span>
-              <a
-                href="https://www.npmjs.com/package/oneclick-wallet-sdk"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: 12, color: C.accent, textDecoration: 'none' }}
-              >
-                npm &rarr;
+              <span style={{ fontSize: 13, color: C.dimmed, fontFamily: 'monospace' }}>Terminal</span>
+              <a href="https://www.npmjs.com/package/oneclick-wallet-sdk"
+                target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 12, color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+                View on npm &rarr;
               </a>
             </div>
             <pre style={{
-              padding: 24, margin: 0, fontSize: 14,
-              color: C.muted, overflowX: 'auto', lineHeight: 1.8,
+              padding: 24, margin: 0, fontSize: 13, fontFamily: 'monospace',
+              color: C.muted, overflowX: 'auto', lineHeight: 1.9,
             }}>
-              <code>
-{`$ npm install oneclick-wallet-sdk
+              <code>{`$ npm install oneclick-wallet-sdk
 
 import { OneClick } from 'oneclick-wallet-sdk';
 
@@ -299,21 +393,18 @@ await wallet.execute({
   to: '0x...',
   value: '1000000000000000000', // 1 AVAX
   chainId: 43114,
-});`}
-              </code>
+});`}</code>
             </pre>
           </div>
         </section>
 
-        {/* CTA */}
-        <section style={{
-          maxWidth: 800, margin: '0 auto', padding: '80px 24px', textAlign: 'center',
-        }}>
-          <h2 style={{ fontSize: 36, fontWeight: 800, marginBottom: 16, letterSpacing: '-0.02em' }}>
+        {/* ── CTA ── */}
+        <section style={{ maxWidth: 800, margin: '0 auto', padding: '80px 24px 100px', textAlign: 'center' }}>
+          <h2 style={{ fontSize: 34, fontWeight: 800, marginBottom: 16, letterSpacing: '-0.02em' }}>
             Ready to ditch seed phrases?
           </h2>
-          <p style={{ color: C.muted, marginBottom: 40, fontSize: 18 }}>
-            Try the demo. Create a wallet in seconds.
+          <p style={{ color: C.muted, marginBottom: 40, fontSize: 17 }}>
+            Try the demo. Create a wallet in seconds with just your fingerprint.
           </p>
           <Link href="/app" style={{
             display: 'inline-block', background: C.accent, color: '#fff',
@@ -324,14 +415,10 @@ await wallet.execute({
           </Link>
         </section>
 
-        {/* Footer */}
-        <footer style={{
-          borderTop: `1px solid ${C.border}`, padding: '48px 24px',
-          maxWidth: 1200, margin: '0 auto',
-        }}>
-          <div className="landing-footer-grid" style={{
-            display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 48,
-            alignItems: 'start',
+        {/* ── Footer ── */}
+        <footer style={{ borderTop: `1px solid ${C.border}`, padding: '48px 24px', maxWidth: 1140, margin: '0 auto' }}>
+          <div className="lp-footer-grid" style={{
+            display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 48, alignItems: 'start',
           }}>
             <div>
               <span style={{ fontSize: 20, fontWeight: 800 }}>OneClick</span>
@@ -340,26 +427,18 @@ await wallet.execute({
                 Built for Avalanche Build Games 2026.
               </p>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Product</span>
-              <Link href="/app" style={{ color: C.dimmed, fontSize: 13, textDecoration: 'none' }}>
-                Demo
-              </Link>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.dimmed, marginBottom: 2 }}>Product</span>
+              <Link href="/app" style={{ color: C.muted, fontSize: 13, textDecoration: 'none' }}>Demo</Link>
               <a href="https://www.npmjs.com/package/oneclick-wallet-sdk" target="_blank" rel="noopener noreferrer"
-                style={{ color: C.dimmed, fontSize: 13, textDecoration: 'none' }}>
-                SDK
-              </a>
+                style={{ color: C.muted, fontSize: 13, textDecoration: 'none' }}>SDK</a>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Links</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.dimmed, marginBottom: 2 }}>Links</span>
               <a href="https://github.com/YMprobot/Oneclick" target="_blank" rel="noopener noreferrer"
-                style={{ color: C.dimmed, fontSize: 13, textDecoration: 'none' }}>
-                GitHub
-              </a>
+                style={{ color: C.muted, fontSize: 13, textDecoration: 'none' }}>GitHub</a>
               <a href="https://github.com/YMprobot/Oneclick" target="_blank" rel="noopener noreferrer"
-                style={{ color: C.dimmed, fontSize: 13, textDecoration: 'none' }}>
-                Documentation
-              </a>
+                style={{ color: C.muted, fontSize: 13, textDecoration: 'none' }}>Documentation</a>
             </div>
           </div>
           <div style={{
