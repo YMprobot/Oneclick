@@ -1,3 +1,4 @@
+import { ethers } from 'ethers';
 import { getAllChains } from './chains.js';
 
 export interface SmartRouteStep {
@@ -28,6 +29,38 @@ const EXPLORER_API: Record<number, string> = {
   43114: 'https://api.snowtrace.io/api',
   4337: 'https://api.routescan.io/v2/network/mainnet/evm/4337/etherscan/api',
 };
+
+// Known wallet method selectors
+const WALLET_METHODS: Record<string, string> = {
+  '0xda0980c7': 'execute',
+  '0xfa70c138': 'executeWithWebAuthn',
+  '0x198ae7ef': 'executeAsRelayer',
+  '0xc908f766': 'deployWallet',
+};
+
+const walletIface = new ethers.Interface([
+  'function execute(address target, uint256 value, bytes data, bytes signature)',
+  'function executeWithWebAuthn(address target, uint256 value, bytes data, bytes authenticatorData, string clientDataJSON, bytes signature)',
+  'function executeAsRelayer(address target, uint256 value, bytes data)',
+]);
+
+/** Decode wallet contract calldata to extract the real target and value. */
+function decodeWalletCall(input: string): { target: string; value: string; txType: string } | null {
+  const selector = input.slice(0, 10);
+  const methodName = WALLET_METHODS[selector];
+  if (!methodName || methodName === 'deployWallet') return null;
+
+  try {
+    const decoded = walletIface.decodeFunctionData(methodName, input);
+    return {
+      target: decoded[0] as string,
+      value: (decoded[1] as bigint).toString(),
+      txType: 'send',
+    };
+  } catch {
+    return null;
+  }
+}
 
 // In-memory cache for current session (survives redeploys for active session)
 const sessionTxs: Map<string, TransactionRecord[]> = new Map();
@@ -78,11 +111,16 @@ async function fetchOnChainTxs(walletAddress: string, limit: number): Promise<Tr
 
         for (const tx of data.result) {
           const status = tx.isError === '0' && tx.txreceipt_status === '1' ? 'confirmed' : 'failed';
+
+          // Try to decode wallet contract calls to get real target/value
+          const decoded = tx.input ? decodeWalletCall(tx.input) : null;
+          const isDeployWallet = tx.methodId === '0xc908f766';
+
           results.push({
             id: `${chain.chainId}:${tx.hash}`,
             walletAddress,
-            target: tx.to || '',
-            value: tx.value,
+            target: decoded?.target || tx.to || '',
+            value: decoded?.value || tx.value,
             chainId: chain.chainId,
             chainName: chain.name,
             nativeSymbol: chain.nativeSymbol,
@@ -90,6 +128,7 @@ async function fetchOnChainTxs(walletAddress: string, limit: number): Promise<Tr
             hash: tx.hash,
             status,
             timestamp: parseInt(tx.timeStamp, 10) * 1000,
+            txType: isDeployWallet ? undefined : (decoded?.txType as 'send' | undefined),
           });
         }
       } catch {
