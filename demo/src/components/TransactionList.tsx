@@ -47,6 +47,15 @@ function timeAgo(timestamp: number): string {
   return `${days}d ago`;
 }
 
+const CHAIN_DOT_COLORS: Record<string, string> = {
+  AVAX: 'bg-red-500',
+  BEAM: 'bg-green-500',
+};
+
+function chainDotColor(nativeSymbol: string): string {
+  return CHAIN_DOT_COLORS[nativeSymbol] || 'bg-gray-500';
+}
+
 function explorerTxUrl(explorerUrl: string, hash: string): string {
   if (!explorerUrl) return '';
   return `${explorerUrl}/tx/${hash}`;
@@ -69,9 +78,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 <div className="mb-1 flex items-center gap-2">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-300">
                     <span
-                      className={`inline-block h-1.5 w-1.5 rounded-full ${
-                        tx.status === 'confirmed' ? 'bg-green-400' : 'bg-red-400'
-                      }`}
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${chainDotColor(tx.nativeSymbol)}`}
                     />
                     {tx.chainName}
                   </span>
