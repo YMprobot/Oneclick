@@ -147,9 +147,9 @@ function PhoneMockup() {
             marginBottom: 8, display: "flex", flexDirection: "column", gap: 0,
           }}>
             {[
-              { sym: "AVAX", chain: "Fuji C-Chain", amount: "52.40 AVAX", usd: "$1,196.32", color: C.accent, letter: "A" },
-              { sym: "USDT", chain: "Fuji C-Chain", amount: "438.50 USDT", usd: "$438.50", color: C.green, letter: "U" },
-              { sym: "USDC", chain: "Fuji C-Chain", amount: "326.80 USDC", usd: "$326.80", color: C.blue, letter: "U" },
+              { sym: "AVAX", chain: "Avalanche C-Chain", amount: "52.40 AVAX", usd: "$1,196.32", color: C.accent, letter: "A" },
+              { sym: "USDT", chain: "Avalanche C-Chain", amount: "438.50 USDT", usd: "$438.50", color: C.green, letter: "U" },
+              { sym: "USDC", chain: "Avalanche C-Chain", amount: "326.80 USDC", usd: "$326.80", color: C.blue, letter: "U" },
               { sym: "BEAM", chain: "BEAM", amount: "12,500 BEAM", usd: "$86.21", color: C.amber, letter: "B" },
             ].map((a, i, arr) => (
               <div key={a.sym + i} style={{
