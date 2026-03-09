@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useWallet } from '@/context/WalletContext';
 import { createPasskey, signIn } from '@/lib/webauthn';
 import { RELAYER_URL } from '@/lib/constants';
@@ -80,6 +81,7 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-800 p-8 shadow-2xl shadow-red-500/5">
+        <Link href="/" className="inline-block mb-4 text-sm text-gray-500 hover:text-gray-300 transition-colors">← Back</Link>
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold tracking-tight">OneClick</h1>
           <p className="mt-2 text-gray-400">One fingerprint. Every chain.</p>
