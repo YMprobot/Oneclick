@@ -14,7 +14,7 @@ User (FaceID/TouchID)
 - `OneClickWallet.sol` — per-user wallet, passkey-verified execution via P256 precompile (0x0100)
 - `OneClickFactory.sol` — CREATE2 deterministic wallet deployment
 - `Paymaster.sol` — gas sponsorship, dApp devs deposit funds
-- `ICMSync.sol` — cross-L1 key sync via Avalanche Interchain Messaging (future)
+- `ICMSync.sol` — cross-L1 key sync via Avalanche Interchain Messaging
 ### Relayer (Node.js)
 - Receives user intents from SDK
 - Routes to correct L1
@@ -25,9 +25,13 @@ User (FaceID/TouchID)
 - Public API: connect(), execute(), getBalance()
 - Talks to relayer, not directly to chain
 ### Demo App (Next.js)
-- Login with fingerprint
-- Unified balance across L1s
-- Execute cross-chain transaction
+- Landing page (marketing) at `/`
+- Login with fingerprint at `/app`
+- Dashboard with multi-chain balances + USD prices at `/dashboard`
+- Send with Smart Route at `/send`
+- TraderJoe swap UI at `/swap`
+- Transaction history at `/activity`
+- 11 reusable components, WalletContext with sessionStorage
 ## Tech Stack & Versions
 - Solidity: 0.8.24
 - Foundry (forge, cast, anvil)
@@ -36,7 +40,7 @@ User (FaceID/TouchID)
 - ethers.js: v6 (NOT v5)
 - Next.js: 15 (App Router)
 - TailwindCSS: 4
-- Target network: Avalanche Fuji testnet (C-Chain + L1 subnets)
+- Target networks: Avalanche Fuji (43113), Avalanche C-Chain mainnet (43114), BEAM (4337)
 ## Code Conventions
 ### Solidity
 - SPDX license: MIT
@@ -133,4 +137,11 @@ oneclick/
 - Unit test WebAuthn key extraction with known test vectors
 - Integration: mock relayer responses
 ## Current Status
-Day 1: Smart contracts scaffold and core wallet logic.
+Phase 1 COMPLETE. All contracts deployed on 3 chains (Fuji, C-Chain, BEAM). Relayer live on Railway (13 endpoints). SDK published on npm. Demo deployed on Vercel. 39/39 tests passing. Smart Route, TraderJoe swap, ICM key sync, Paymaster — all working.
+
+### Deployed Infrastructure
+- **Relayer:** https://oneclick-production-54fc.up.railway.app
+- **Demo:** https://oneclick-orcin-nine.vercel.app
+- **SDK:** https://www.npmjs.com/package/oneclick-wallet-sdk
+- **Factory:** `0x7ECeA257d8Fe653CA6C24CE744D589784DE5B188`
+- **Paymaster:** `0xFe1Dd7F4A8DbD7e9C92Eb7c79c9331E3f8cD494E`

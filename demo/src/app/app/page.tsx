@@ -80,17 +80,17 @@ export default function LoginPage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-800 p-8 shadow-2xl shadow-red-500/5">
+      <div className="w-full max-w-md rounded-2xl bg-gray-900 border border-gray-800 p-6 sm:p-8 shadow-2xl shadow-red-500/5">
         <Link href="/" className="inline-block mb-4 text-sm text-gray-500 hover:text-gray-300 transition-colors">← Back</Link>
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold tracking-tight">OneClick</h1>
-          <p className="mt-2 text-gray-400">One fingerprint. Every chain.</p>
+          <p className="mt-2 text-gray-400">One fingerprint. Every asset.</p>
         </div>
 
         <button
           onClick={handleCreateWallet}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-3 rounded-xl bg-red-500 px-8 py-4 text-lg font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-red-500 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading === 'create' ? (
             <>
@@ -99,7 +99,7 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 10V3m0 0C10.343 3 9 4.343 9 6m3-3c1.657 0 3 1.343 3 3" />
                 <path d="M7 10V8a5 5 0 0110 0v2" />
                 <rect x="5" y="10" width="14" height="11" rx="2" />
@@ -112,7 +112,7 @@ export default function LoginPage() {
         <button
           onClick={handleSignIn}
           disabled={isLoading}
-          className="mt-3 w-full flex items-center justify-center gap-3 rounded-xl border border-gray-600 bg-transparent px-8 py-4 text-lg font-semibold text-white transition-colors hover:border-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="mt-3 w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-600 bg-transparent px-6 py-3.5 text-base font-semibold text-white transition-colors hover:border-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading === 'signin' ? (
             <>
@@ -121,7 +121,7 @@ export default function LoginPage() {
             </>
           ) : (
             <>
-              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3z" />
                 <path d="M12 14c-3 0-5.5 1.5-6 4h12c-.5-2.5-3-4-6-4z" />
                 <path d="M15 8c0-1.657-.343-3-1-3" />

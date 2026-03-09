@@ -1,4 +1,4 @@
-# OneClick — One Fingerprint. Every Chain.
+# OneClick — One Fingerprint. Every Asset.
 
 Universal smart wallet with passkey authentication for Avalanche L1 blockchains. No seed phrases. No network switching. No gas fees.
 
@@ -91,6 +91,20 @@ dApp developers deposit AVAX into Paymaster contracts. The relayer calls `sponso
 
 Change your passkey on one L1 → automatically synced to all others via Avalanche Interchain Messaging (Teleporter). The `ICMSync` contract sends `KeySyncMessage` payloads across chains, and the receiving contract calls `wallet.updateOwnerKey()` to apply the update.
 
+## Use Cases
+
+### RWA (Real-World Assets)
+Access tokenized bonds, real estate, gold — without crypto knowledge. Fingerprint login, card funding, portfolio in USD. Like Robinhood, but on blockchain.
+
+### Gaming
+Zero-friction onboarding — player taps finger and plays. No MetaMask, no seed phrase. Gas as marketing spend via Paymaster. 30-min SDK integration replaces weeks of WalletConnect setup.
+
+### DeFi
+Liquidity from any L1 — users interact with protocols regardless of which chain they're on. Smart Route handles cross-chain swaps automatically.
+
+### AI Agents
+OneClick as the execution layer for AI. Agent SDK with session keys, MCP Server for Claude/GPT integration. Agent says "buy X for $Y" — OneClick handles chains, DEX, token path, and gas.
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -158,14 +172,26 @@ Base URL: `https://oneclick-production-54fc.up.railway.app`
 
 ## Competitive Positioning
 
+Market context: Privy acquired by Stripe (June 2025). Dynamic acquired by Fireblocks (2025). The market is consolidating. OneClick is independent and open-source.
+
 | Feature | MetaMask | Biconomy / ZeroDev | Abstract | **OneClick** |
 |---------|----------|-------------------|----------|-------------|
-| Auth | Seed phrase | Seed phrase + AA | Passkeys | **Passkeys** |
+| Auth | Seed phrase | Seed phrase + AA | Passkeys | **Passkeys (on-chain P256)** |
 | Multi-L1 | Manual switch | Single chain | One L2 | **All Avalanche L1s** |
-| Auto-swap | No | No | No | **Yes** |
+| Auto-swap | No | No | No | **Smart Route** |
 | Gas sponsorship | No | Yes | Yes | **Yes** |
 | ICM key sync | N/A | N/A | N/A | **Yes** |
 | Deterministic address | No | Partial | No | **Same address on every chain** |
+| AI agent support | No | Basic | No | **Session keys + MCP** |
+| Integration time | Days | Hours | Hours | **30 min** |
+| Vendor lock-in | No | No | Abstract chain | **None (open source)** |
+
+### What Only OneClick Does
+- **ICM Cross-Chain Key Sync** — native Avalanche ICM for wallet state sync between sovereign L1s
+- **Smart Route** — auto swap + transfer in one biometric tap
+- **On-Chain P256 Verification** — passkey signature verified in smart contract via Granite precompile, not on a TEE server
+- **Avalanche L1 Native** — built for multi-L1 topology with different validators and gas tokens
+- **Human + AI Unified** — same wallet, same permissions, same Smart Route for both human taps and agent API calls
 
 ## Getting Started
 
@@ -248,12 +274,15 @@ oneclick/
 ├── demo/                     # Next.js 15 demo app
 │   └── src/
 │       ├── app/
-│       │   ├── page.tsx            # Login (create / sign-in)
+│       │   ├── page.tsx            # Landing page (marketing)
+│       │   ├── app/page.tsx        # Login (create wallet / sign-in)
 │       │   ├── dashboard/page.tsx  # Multi-chain balances + USD
 │       │   ├── send/page.tsx       # Send with Smart Route
-│       │   └── swap/page.tsx       # TraderJoe swap UI
-│       ├── components/             # 7 reusable components
-│       └── context/                # WalletContext (sessionStorage)
+│       │   ├── swap/page.tsx       # TraderJoe swap UI
+│       │   └── activity/page.tsx   # Transaction history
+│       ├── components/             # 11 reusable components
+│       ├── context/                # WalletContext (sessionStorage)
+│       └── lib/                    # WebAuthn, constants, utils
 ├── CLAUDE.md                 # AI development guidelines
 ├── .env.example
 └── README.md
@@ -261,9 +290,19 @@ oneclick/
 
 ## Monetization
 
-dApp developers pay to sponsor gas for their users through Paymaster contracts. Same model validated by Abstract — gas sponsorship as a user acquisition cost.
+| Stream | How It Works | Phase |
+|--------|-------------|-------|
+| Paymaster Fee | 3-10% on gas sponsorship paid by dApps | Phase 2 |
+| Smart Route Fee | 0.1-0.3% on auto-swap volume | Phase 2 |
+| AI Strategy Fee | Performance fee (2-5%) or subscription | Phase 3 |
+| Hosted Relayer SaaS | $99-499/mo for managed infrastructure | Phase 3 |
+| WaaS (per-wallet) | $0.01-0.10/wallet + per-tx for enterprises | Phase 4 |
+| MCP API calls | Per-call pricing for AI agents | Phase 3 |
 
 ## Roadmap
+
+### Phase 1: Foundation — ✅ COMPLETE (Q1 2026)
+Built solo in 6 days.
 
 - [x] Passkey wallet with P256 on-chain verification
 - [x] Deterministic multi-chain deployment (3 L1s)
@@ -275,9 +314,38 @@ dApp developers pay to sponsor gas for their users through Paymaster contracts. 
 - [x] Live demo + relayer deployed
 - [x] 39/39 tests passing
 - [x] SDK published on npm ([oneclick-wallet-sdk](https://www.npmjs.com/package/oneclick-wallet-sdk))
-- [ ] Account recovery (social recovery)
+
+### Phase 2: RWA, AI Agents & Core UX (Q2 2026)
+Target: 5 dApp integrations, 1,000 wallets.
+
+- [ ] Session Keys — granular permissions (time, contract whitelist, spending caps)
+- [ ] RWA Marketplace UI — browse & invest in tokenized bonds, real estate, commodities
+- [ ] Multi-method Login — email + Google as passkey fallback
+- [ ] Fiat On-Ramp — Visa/Mastercard/Apple Pay via MoonPay or Transak
+- [ ] AI Agent SDK — `connectAgent()` with session keys + permission bounds
+- [ ] MCP Server — OneClick as tool for Claude/GPT/any LLM
+- [ ] Account Recovery — social recovery (2-of-3 contacts)
+- [ ] Batch Transactions — approve + swap + stake in one tap
+
+### Phase 3: Scale & Ecosystem (Q3-Q4 2026)
+Target: 20+ L1s, 10K wallets.
+
+- [ ] 20+ Avalanche L1s with auto-deploy
+- [ ] MCP Registry Publication — listed in Anthropic MCP registry
+- [ ] AI Strategy Marketplace — community-created yield/DCA/arbitrage strategies
+- [ ] Mobile SDK (React Native)
 - [ ] Decentralized relayer network
-- [ ] Mobile app (React Native)
+- [ ] DEX Aggregation beyond TraderJoe
+- [ ] Compliance tooling (KYC/AML for RWA)
+
+### Phase 4: Mass Adoption (2027)
+Target: 1M+ wallets, $1M+ TVL.
+
+- [ ] Full Fiat Lifecycle — card → invest → earn yield → withdraw to bank
+- [ ] Enterprise WaaS (Wallet-as-a-Service)
+- [ ] Autonomous Agent Economy — agents with own wallets
+- [ ] EIP-7702 support — upgrade existing EOAs
+- [ ] Protocol decentralization — governance token, DAO
 
 ## License
 
