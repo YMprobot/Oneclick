@@ -66,7 +66,7 @@ function Hero() {
 
         <p style={{ fontSize: "clamp(15px, 2vw, 19px)", color: C.muted, lineHeight: 1.7, maxWidth: 560, margin: "0 auto 36px" }}>
           Smart wallet for Avalanche that replaces seed phrases with Face ID.
-          Invest in real-world assets, trade tokens, play Web3 games — no crypto knowledge, no gas fees, no network switching.
+          Invest in real-world assets, trade tokens, play Web3 games, power AI agents — no crypto knowledge, no gas fees, no network switching.
         </p>
 
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
@@ -166,7 +166,7 @@ function ProblemSolution() {
 
 // ─── Block 3: Three Verticals (Tabs) ────────────────────
 function Verticals() {
-  type Vertical = "rwa" | "gaming" | "defi";
+  type Vertical = "rwa" | "gaming" | "defi" | "ai";
   const [active, setActive] = useState<Vertical>("rwa");
   const data = {
     rwa: {
@@ -220,6 +220,23 @@ function Verticals() {
         "Zero gas on Avalanche L1s \u2014 protocol sponsors it",
       ],
     },
+    ai: {
+      label: "AI Agents",
+      color: C.green,
+      tagline: "Blockchain execution layer for AI",
+      forProjects: [
+        "Agent SDK \u2014 connect any LLM (Claude, GPT, open-source) to on-chain actions via session keys with granular permissions",
+        "MCP Server \u2014 OneClick as a tool for AI models. Agent calls execute(), OneClick handles chains, gas, and swaps automatically",
+        "Smart Route for agents \u2014 agent says \u201Cbuy X for $Y\u201D, OneClick figures out which L1, which DEX, which token path",
+        "Paymaster for agents \u2014 no need to fund agent with gas tokens on each chain. dApp sponsors via Paymaster",
+      ],
+      forUsers: [
+        "AI robo-advisor for RWA \u2014 set strategy once (\u201C60% bonds, 30% real estate, 10% gold\u201D), AI rebalances monthly",
+        "DeFi automation \u2014 yield optimizer moves liquidity across L1s chasing best APY. Session key limits the risk",
+        "Gaming AI companions \u2014 NPC with real wallet trades items, companion auto-loots and sells. All within permission bounds",
+        "One fingerprint to authorize \u2014 you set the rules, AI executes. Revoke anytime with one tap",
+      ],
+    },
   };
 
   const d = data[active];
@@ -229,7 +246,7 @@ function Verticals() {
       <div className="lp-section" style={{ maxWidth: 1120, margin: "0 auto", padding: "80px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <p style={{ fontSize: 12, fontWeight: 700, color: C.accent, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Use Cases</p>
-          <h2 className="lp-heading" style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", margin: 0 }}>One platform. Three markets.</h2>
+          <h2 className="lp-heading" style={{ fontSize: 36, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", margin: 0 }}>One platform. Four markets.</h2>
         </div>
 
         {/* Tabs */}
@@ -306,6 +323,7 @@ function HowAndCompare() {
     { feature: "Fiat on-ramp", metamask: false, biconomy: false, abstract: false, oneclick: "Roadmap" },
     { feature: "Integration time", metamask: "Days", biconomy: "Hours", abstract: "Hours", oneclick: "30 min" },
     { feature: "Vendor lock-in", metamask: false, biconomy: false, abstract: "Abstract chain", oneclick: "None (open source)" },
+    { feature: "AI agent support", metamask: false, biconomy: "Basic", abstract: false, oneclick: "Session keys + MCP" },
   ];
 
   function CellVal({ val }: { val: boolean | string }) {
@@ -383,8 +401,8 @@ function HowAndCompare() {
 function SDKRoadmapFooter() {
   const phases = [
     { label: "Q1 2026", title: "MVP", status: "done", color: C.green, items: "Wallet, 3 L1s, swaps, ICM, SDK, 39 tests" },
-    { label: "Q2 2026", title: "RWA + Fiat", status: "now", color: C.accent, items: "RWA marketplace, fiat on-ramp, session keys, recovery" },
-    { label: "Q3-Q4", title: "Scale", status: "planned", color: C.blue, items: "20+ L1s, decentralized relayers, mobile SDK, compliance" },
+    { label: "Q2 2026", title: "RWA + AI", status: "now", color: C.accent, items: "RWA marketplace, fiat on-ramp, session keys, AI agent SDK" },
+    { label: "Q3-Q4", title: "Scale", status: "planned", color: C.blue, items: "20+ L1s, MCP server, AI strategies, mobile SDK, compliance" },
     { label: "2027", title: "Mass Product", status: "planned", color: C.purple, items: "Enterprise WaaS, full fiat lifecycle, 1M+ wallets" },
   ];
 
