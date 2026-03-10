@@ -162,10 +162,10 @@ export default function LoginPage() {
                 ? '✓ Link copied! Paste in browser'
                 : isIOS()
                   ? 'Open in Safari'
-                  : 'Open in Chrome'}
+                  : 'Open in Browser'}
             </button>
             <p className="mt-3 text-xs text-gray-500">
-              Copy the link and paste it in {isIOS() ? 'Safari' : 'Chrome'}
+              Copy the link and paste it in {isIOS() ? 'Safari' : 'your browser'}
             </p>
           </div>
         ) : (
