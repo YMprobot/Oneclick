@@ -324,6 +324,7 @@ Target: 5 dApp integrations, 1,000 wallets.
 - [ ] Fiat On-Ramp — Visa/Mastercard/Apple Pay via MoonPay or Transak
 - [ ] AI Agent SDK — `connectAgent()` with session keys + permission bounds
 - [ ] MCP Server — OneClick as tool for Claude/GPT/any LLM
+- [ ] ERC-8183 support — trustless AI agent commerce (task escrow, evaluator verification)
 - [ ] Account Recovery — social recovery (2-of-3 contacts)
 - [ ] Batch Transactions — approve + swap + stake in one tap
 

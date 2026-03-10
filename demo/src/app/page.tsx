@@ -531,6 +531,7 @@ function Verticals() {
         "MCP Server \u2014 OneClick as a tool for AI models. Agent calls execute(), OneClick handles chains, gas, and swaps automatically",
         "Smart Route for agents \u2014 agent says \u201Cbuy X for $Y\u201D, OneClick figures out which L1, which DEX, which token path",
         "Paymaster for agents \u2014 no need to fund agent with gas tokens on each chain. dApp sponsors via Paymaster",
+        "ERC-8183 Commerce \u2014 trustless agent-to-agent transactions with task escrow and evaluator verification (roadmap)",
       ],
       forUsers: [
         "AI robo-advisor for RWA \u2014 set strategy once (\u201C60% bonds, 30% real estate, 10% gold\u201D), AI rebalances monthly",
@@ -714,7 +715,7 @@ function HowAndCompare() {
 function SDKRoadmapFooter() {
   const phases = [
     { label: "Q1 2026", title: "MVP", status: "done", color: C.green, items: "Wallet, 3 L1s, swaps, ICM, SDK, 39 tests" },
-    { label: "Q2 2026", title: "RWA + AI", status: "now", color: C.accent, items: "RWA marketplace, fiat on-ramp, session keys, AI agent SDK" },
+    { label: "Q2 2026", title: "RWA + AI", status: "now", color: C.accent, items: "RWA marketplace, fiat on-ramp, session keys, AI agent SDK, ERC-8183" },
     { label: "Q3-Q4", title: "Scale", status: "planned", color: C.blue, items: "20+ L1s, MCP server, AI strategies, mobile SDK, compliance" },
     { label: "2027", title: "Mass Product", status: "planned", color: C.purple, items: "Enterprise WaaS, full fiat lifecycle, 1M+ wallets" },
   ];
