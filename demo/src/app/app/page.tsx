@@ -11,7 +11,24 @@ import { Spinner } from '@/components/Spinner';
 function isInAppBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
-  return /FBAN|FBAV|Instagram|Twitter|Telegram|TelegramBot|Discord|Line|Snapchat|WeChat|MicroMessenger/i.test(ua);
+
+  // Specific app detection
+  if (/FBAN|FBAV|Instagram|Twitter|Telegram|TelegramBot|Discord|Line|Snapchat|WeChat|MicroMessenger/i.test(ua)) {
+    return true;
+  }
+
+  // iOS: any browser that is NOT Safari is an in-app browser
+  // Real Safari has "Safari/" in UA, in-app WebViews (WKWebView) don't
+  if (/iPhone|iPad|iPod/.test(ua) && !(/Safari\//.test(ua))) {
+    return true;
+  }
+
+  // Android: detect WebView
+  if (/Android/.test(ua) && /wv|\.0\.0\.0/.test(ua)) {
+    return true;
+  }
+
+  return false;
 }
 
 function isIOS(): boolean {
