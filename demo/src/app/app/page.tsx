@@ -49,11 +49,8 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [inApp, setInApp] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [ua, setUa] = useState('SSR');
-
   useEffect(() => {
     setInApp(isInAppBrowser());
-    setUa(navigator.userAgent || 'empty');
   }, []);
 
   async function deployAndRedirect(passkey: { credentialId: string; pubKeyX: string; pubKeyY: string }) {
@@ -223,14 +220,7 @@ export default function LoginPage() {
           </>
         )}
 
-        <p className="mt-4 text-center text-xs text-gray-700 break-all select-all">
-          UA: {ua}
-        </p>
-        <p className="mt-1 text-center text-xs text-gray-700">
-          inApp: {String(inApp)} | TG: {typeof window !== 'undefined' ? String('TelegramWebviewProxy' in window || 'Telegram' in window) : 'SSR'}
-        </p>
-
-        <p className="mt-4 text-center text-xs text-gray-600">
+        <p className="mt-8 text-center text-xs text-gray-600">
           Powered by Avalanche
         </p>
       </div>
