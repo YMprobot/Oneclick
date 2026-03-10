@@ -306,7 +306,7 @@ oneclick/
 ## Roadmap
 
 ### Phase 1: Foundation — ✅ COMPLETE (Q1 2026)
-Built solo in 6 days.
+Phase 1 completed.
 
 - [x] Passkey wallet with P256 on-chain verification
 - [x] Deterministic multi-chain deployment (3 L1s)
