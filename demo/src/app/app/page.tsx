@@ -120,14 +120,10 @@ export default function LoginPage() {
     }
   }
 
-  function handleOpenInBrowser() {
-    if (isAndroid()) {
-      window.location.href = `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;end`;
-      return;
-    }
+  async function handleOpenInBrowser() {
     const url = window.location.href;
     try {
-      navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -135,16 +131,6 @@ export default function LoginPage() {
     }
     if (isIOS()) {
       window.location.href = `x-safari-${url}`;
-    }
-  }
-
-  async function handleCopyLink() {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      // Clipboard API may not be available
     }
   }
 
@@ -181,20 +167,11 @@ export default function LoginPage() {
                 ? '✓ Link copied! Paste in browser'
                 : isIOS()
                   ? 'Open in Safari'
-                  : 'Open in Browser'}
+                  : 'Copy Link'}
             </button>
-            {isAndroid() ? (
-              <button
-                onClick={handleCopyLink}
-                className="mt-2 w-full text-center text-xs text-gray-400 hover:text-gray-300 transition-colors py-1"
-              >
-                {copied ? '✓ Copied!' : 'Copy Link'}
-              </button>
-            ) : (
-              <p className="mt-3 text-xs text-gray-500">
-                Copy the link and paste it in Safari
-              </p>
-            )}
+            <p className="mt-3 text-xs text-gray-500">
+              {isIOS() ? 'Copy the link and paste it in Safari' : 'Paste the link in your browser'}
+            </p>
           </div>
         ) : (
           <>
