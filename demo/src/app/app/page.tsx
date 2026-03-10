@@ -9,16 +9,21 @@ import { RELAYER_URL } from '@/lib/constants';
 import { Spinner } from '@/components/Spinner';
 
 function isInAppBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
   const ua = navigator.userAgent || '';
 
-  // Specific app detection
+  // Telegram: SFSafariViewController on iOS has identical Safari UA,
+  // but Telegram injects JS objects we can detect
+  if ('TelegramWebviewProxy' in window || 'Telegram' in window) {
+    return true;
+  }
+
+  // Specific app detection via UA string
   if (/FBAN|FBAV|Instagram|Twitter|Telegram|TelegramBot|Discord|Line|Snapchat|WeChat|MicroMessenger/i.test(ua)) {
     return true;
   }
 
-  // iOS: any browser that is NOT Safari is an in-app browser
-  // Real Safari has "Safari/" in UA, in-app WebViews (WKWebView) don't
+  // iOS: WKWebView doesn't have "Safari/" in UA, real Safari always does
   if (/iPhone|iPad|iPod/.test(ua) && !(/Safari\//.test(ua))) {
     return true;
   }
@@ -222,7 +227,7 @@ export default function LoginPage() {
           UA: {ua}
         </p>
         <p className="mt-1 text-center text-xs text-gray-700">
-          inApp: {String(inApp)}
+          inApp: {String(inApp)} | TG: {typeof window !== 'undefined' ? String('TelegramWebviewProxy' in window || 'Telegram' in window) : 'SSR'}
         </p>
 
         <p className="mt-4 text-center text-xs text-gray-600">
