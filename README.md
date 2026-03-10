@@ -2,9 +2,9 @@
 
 Universal smart wallet with passkey authentication for Avalanche L1 blockchains. No seed phrases. No network switching. No gas fees.
 
-**[Live Demo](https://oneclick-orcin-nine.vercel.app)** | **[Walkthrough Video — Coming soon]** | **[Relayer API](https://oneclick-production-54fc.up.railway.app/health)**
+**[Live Demo](https://oneclick-orcin-nine.vercel.app)** | **[Relayer API](https://oneclick-production-54fc.up.railway.app/health)**
 
-> Built solo in 6 days for **Avalanche Build Games 2026**.
+> Built in 6 days for **Avalanche Build Games 2026**.
 
 ---
 
@@ -103,7 +103,7 @@ Zero-friction onboarding — player taps finger and plays. No MetaMask, no seed 
 Liquidity from any L1 — users interact with protocols regardless of which chain they're on. Smart Route handles cross-chain swaps automatically.
 
 ### AI Agents
-OneClick as the execution layer for AI. Agent SDK with session keys, MCP Server for Claude/GPT integration. Agent says "buy X for $Y" — OneClick handles chains, DEX, token path, and gas.
+OneClick as the execution layer for AI. Agent SDK with session keys, MCP Server for Claude/GPT integration. Agent says "buy X for $Y" — OneClick handles chains, DEX, token path, and gas. ERC-8183 support planned — trustless agent-to-agent commerce with on-chain escrow and evaluator verification.
 
 ## Tech Stack
 
@@ -192,6 +192,10 @@ Market context: Privy acquired by Stripe (June 2025). Dynamic acquired by Firebl
 - **On-Chain P256 Verification** — passkey signature verified in smart contract via Granite precompile, not on a TEE server
 - **Avalanche L1 Native** — built for multi-L1 topology with different validators and gas tokens
 - **Human + AI Unified** — same wallet, same permissions, same Smart Route for both human taps and agent API calls
+
+## Security
+
+Full security audit with 29 findings documented in [SECURITY_AUDIT.md](./SECURITY_AUDIT.md). Smart contracts verified on Sourcify and Snowtrace (exact match). See [Integration Guide](./INTEGRATION_GUIDE.md) for dApp developers.
 
 ## Getting Started
 
