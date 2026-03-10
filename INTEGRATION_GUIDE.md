@@ -19,7 +19,7 @@ npm install oneclick-wallet-sdk
 ```typescript
 import { connect } from "oneclick-wallet-sdk";
 
-const wallet = await connect({ relayerUrl: "https://oneclick-production-54fc.up.railway.app" });
+const wallet = await connect({ relayerUrl: "https://oneclick.up.railway.app" });
 console.log("Wallet address:", wallet.address); // same on every L1
 
 await wallet.execute({ target: "0xRecipient", value: "1000000000000000000", data: "0x", chainId: 43113 });
@@ -41,7 +41,7 @@ const address = accounts[0];
 ```typescript
 import { connect } from "oneclick-wallet-sdk";
 
-const wallet = await connect({ relayerUrl: "https://oneclick-production-54fc.up.railway.app" });
+const wallet = await connect({ relayerUrl: "https://oneclick.up.railway.app" });
 const address = wallet.address;
 ```
 
@@ -100,7 +100,7 @@ For teams integrating without the SDK — the raw HTTP API:
 | GET | `/chains` | — | List supported chains |
 | GET | `/health` | — | Health check |
 
-Base URL: `https://oneclick-production-54fc.up.railway.app`
+Base URL: `https://oneclick.up.railway.app`
 
 ## For Hackathon Teams
 
@@ -118,7 +118,7 @@ Drop-in `<OneClickButton />` for any React/Next.js app:
 import { useState } from "react";
 import { connect, type OneClickWallet } from "oneclick-wallet-sdk";
 
-const RELAYER = "https://oneclick-production-54fc.up.railway.app";
+const RELAYER = "https://oneclick.up.railway.app";
 
 export function OneClickButton({ onConnect }: { onConnect: (wallet: OneClickWallet) => void }) {
   const [loading, setLoading] = useState(false);

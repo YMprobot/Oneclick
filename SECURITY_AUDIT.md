@@ -245,7 +245,7 @@ The most urgent issues are: (1) the relayer private key on disk with no rotation
 ### D-04: `.env.local` committed to git [INFORMATIONAL]
 
 - **File:** `demo/.env.local`
-- **Description:** `.env.local` contains only `NEXT_PUBLIC_RELAYER_URL=https://oneclick-production-54fc.up.railway.app` which is public information (NEXT_PUBLIC prefix). However, committing `.env.local` is against Next.js conventions.
+- **Description:** `.env.local` contains only `NEXT_PUBLIC_RELAYER_URL=https://oneclick.up.railway.app` which is public information (NEXT_PUBLIC prefix). However, committing `.env.local` is against Next.js conventions.
 - **Impact:** No security impact (only public env vars). Convention violation.
 - **Fix:** Add `demo/.env.local` to `.gitignore`.
 - **Status:** OPEN.

@@ -2,7 +2,7 @@
 
 Universal smart wallet with passkey authentication for Avalanche L1 blockchains. No seed phrases. No network switching. No gas fees.
 
-**[Live Demo](https://oneclick-orcin-nine.vercel.app)** | **[Relayer API](https://oneclick-production-54fc.up.railway.app/health)**
+**[Live Demo](https://oneclick-orcin-nine.vercel.app)** | **[Relayer API](https://oneclick.up.railway.app/health)**
 
 > Built in 6 days for **Avalanche Build Games 2026**.
 
@@ -29,7 +29,7 @@ OneClick gives users a single wallet that works across all Avalanche L1s with bi
 ```typescript
 import { connect } from "oneclick-wallet-sdk";
 
-const wallet = await connect({ relayerUrl: "https://oneclick-production-54fc.up.railway.app" });
+const wallet = await connect({ relayerUrl: "https://oneclick.up.railway.app" });
 
 await wallet.execute({
   target: "0x...", value: "0", data: "0x...", chainId: 43114
@@ -152,7 +152,7 @@ ICMSyncTest: 19 tests
 
 ## Relayer API
 
-Base URL: `https://oneclick-production-54fc.up.railway.app`
+Base URL: `https://oneclick.up.railway.app`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
