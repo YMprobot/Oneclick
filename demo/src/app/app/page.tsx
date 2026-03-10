@@ -42,6 +42,11 @@ function isIOS(): boolean {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
+function isAndroid(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android/i.test(navigator.userAgent);
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { setWallet } = useWallet();
@@ -115,10 +120,14 @@ export default function LoginPage() {
     }
   }
 
-  async function handleOpenInBrowser() {
+  function handleOpenInBrowser() {
+    if (isAndroid()) {
+      window.location.href = `intent://${window.location.host}${window.location.pathname}#Intent;scheme=https;end`;
+      return;
+    }
     const url = window.location.href;
     try {
-      await navigator.clipboard.writeText(url);
+      navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -126,6 +135,16 @@ export default function LoginPage() {
     }
     if (isIOS()) {
       window.location.href = `x-safari-${url}`;
+    }
+  }
+
+  async function handleCopyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // Clipboard API may not be available
     }
   }
 
@@ -164,9 +183,18 @@ export default function LoginPage() {
                   ? 'Open in Safari'
                   : 'Open in Browser'}
             </button>
-            <p className="mt-3 text-xs text-gray-500">
-              Copy the link and paste it in {isIOS() ? 'Safari' : 'your browser'}
-            </p>
+            {isAndroid() ? (
+              <button
+                onClick={handleCopyLink}
+                className="mt-2 w-full text-center text-xs text-gray-400 hover:text-gray-300 transition-colors py-1"
+              >
+                {copied ? '✓ Copied!' : 'Copy Link'}
+              </button>
+            ) : (
+              <p className="mt-3 text-xs text-gray-500">
+                Copy the link and paste it in Safari
+              </p>
+            )}
           </div>
         ) : (
           <>
