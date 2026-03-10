@@ -4,7 +4,7 @@ Universal smart wallet with passkey authentication for Avalanche L1 blockchains.
 
 **[Live Demo](https://oneclick-orcin-nine.vercel.app)** | **[Relayer API](https://oneclick.up.railway.app/health)**
 
-> Built in 6 days for **Avalanche Build Games 2026**.
+> Built for **Avalanche Build Games 2026**.
 
 ---
 
