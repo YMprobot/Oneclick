@@ -332,13 +332,6 @@ function Hero() {
             }}>
               Documentation
             </a>
-            <Link href="/demo-game" className="lp-btn-doc" style={{
-              background: "transparent", border: `1px solid ${C.purple}44`, color: C.purple,
-              padding: "13px 28px", borderRadius: 10, textDecoration: "none", fontSize: 15, fontWeight: 600,
-              transition: "transform 0.2s, box-shadow 0.2s, border-color 0.2s",
-            }}>
-              🎮 Demo Integration
-            </Link>
           </div>
 
           <div className="lp-built-on" style={{
