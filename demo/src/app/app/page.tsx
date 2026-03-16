@@ -14,60 +14,97 @@ function isIOS(): boolean {
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
+/** Short localStorage key for caching wallet address by public key. */
+function addressCacheKey(pubKeyX: string): string {
+  return `oneclick:v1:${pubKeyX.slice(0, 16)}`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { setWallet } = useWallet();
   const [loading, setLoading] = useState<'create' | 'signin' | null>(null);
+  const [step, setStep] = useState<'idle' | 'biometric' | 'done'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [webauthnBlocked, setWebauthnBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
   const [webauthnSupported, setWebauthnSupported] = useState(true);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setWebauthnSupported(window.PublicKeyCredential !== undefined);
     }
   }, []);
 
-  async function deployAndRedirect(passkey: { credentialId: string; pubKeyX: string; pubKeyY: string }) {
-    let address = '';
+  // Pre-warm relayer so Railway wakes up while user reads the page
+  useEffect(() => {
+    fetch(`${RELAYER_URL}/health`, { mode: 'no-cors' }).catch(() => {});
+  }, []);
 
-    try {
-      const res = await fetch(`${RELAYER_URL}/deploy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pubKeyX: passkey.pubKeyX,
-          pubKeyY: passkey.pubKeyY,
-        }),
+  function deployInBackground(passkey: { credentialId: string; pubKeyX: string; pubKeyY: string }) {
+    fetch(`${RELAYER_URL}/deploy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pubKeyX: passkey.pubKeyX,
+        pubKeyY: passkey.pubKeyY,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.walletAddress) {
+          // Cache address for future sign-ins
+          try {
+            localStorage.setItem(
+              addressCacheKey(passkey.pubKeyX),
+              JSON.stringify({ address: data.walletAddress })
+            );
+          } catch { /* noop */ }
+
+          // Update wallet with real address
+          setWallet({
+            address: data.walletAddress,
+            pubKeyX: passkey.pubKeyX,
+            pubKeyY: passkey.pubKeyY,
+            credentialId: passkey.credentialId,
+            isConnected: true,
+          });
+        }
+      })
+      .catch(() => {
+        // Deploy failed — dashboard will show timeout error after 60s
       });
+  }
 
-      if (res.ok) {
-        const data = await res.json();
-        address = data.walletAddress || '';
-      }
-    } catch {
-      // Relayer unavailable — proceed with local wallet data
-    }
-
+  function optimisticRedirect(passkey: { credentialId: string; pubKeyX: string; pubKeyY: string }, cachedAddress?: string) {
+    // Set wallet immediately — address may be empty (deploying) or cached
     setWallet({
-      address,
+      address: cachedAddress || '',
       pubKeyX: passkey.pubKeyX,
       pubKeyY: passkey.pubKeyY,
       credentialId: passkey.credentialId,
       isConnected: true,
     });
 
+    // Redirect instantly
     router.push('/dashboard');
+
+    // If no cached address, deploy in background
+    if (!cachedAddress) {
+      deployInBackground(passkey);
+    }
   }
 
   async function handleCreateWallet() {
     setLoading('create');
+    setStep('biometric');
     setError(null);
 
     try {
       const passkey = await createPasskey('oneclick-user');
-      await deployAndRedirect(passkey);
+      setStep('done');
+      optimisticRedirect(passkey);
     } catch (err) {
+      setStep('idle');
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
         setWebauthnBlocked(true);
       } else {
@@ -81,12 +118,26 @@ export default function LoginPage() {
 
   async function handleSignIn() {
     setLoading('signin');
+    setStep('biometric');
     setError(null);
 
     try {
       const passkey = await signIn();
-      await deployAndRedirect(passkey);
+      setStep('done');
+
+      // Try to get cached address from previous session
+      let cachedAddress = '';
+      try {
+        const stored = localStorage.getItem(addressCacheKey(passkey.pubKeyX));
+        if (stored) {
+          const parsed = JSON.parse(stored) as { address: string };
+          cachedAddress = parsed.address || '';
+        }
+      } catch { /* noop */ }
+
+      optimisticRedirect(passkey, cachedAddress);
     } catch (err) {
+      setStep('idle');
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
         setWebauthnBlocked(true);
       } else {
@@ -167,7 +218,7 @@ export default function LoginPage() {
               {loading === 'create' ? (
                 <>
                   <Spinner />
-                  Creating wallet...
+                  {step === 'biometric' ? 'Verifying identity...' : 'Done!'}
                 </>
               ) : (
                 <>
@@ -189,7 +240,7 @@ export default function LoginPage() {
               {loading === 'signin' ? (
                 <>
                   <Spinner />
-                  Signing in...
+                  {step === 'biometric' ? 'Verifying identity...' : 'Done!'}
                 </>
               ) : (
                 <>

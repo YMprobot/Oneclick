@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { RELAYER_URL } from '@/lib/constants';
@@ -11,6 +11,7 @@ import { DistributionBar } from '@/components/DistributionBar';
 import { QuickActions } from '@/components/QuickActions';
 import { ReceiveModal } from '@/components/ReceiveModal';
 import { TransactionList } from '@/components/TransactionList';
+import { Spinner } from '@/components/Spinner';
 
 interface TokenBalance {
   symbol: string;
@@ -46,6 +47,9 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
+/** Timeout in ms before showing deploy error. */
+const DEPLOY_TIMEOUT_MS = 60_000;
+
 export default function DashboardPage() {
   const { wallet, hydrated } = useWallet();
   const router = useRouter();
@@ -55,6 +59,32 @@ export default function DashboardPage() {
   const [showReceiveModal, setShowReceiveModal] = useState(false);
   const [prices, setPrices] = useState<Record<number, number>>({});
   const [tokenBalances, setTokenBalances] = useState<Record<number, TokenBalance[]>>({});
+  const [deployTimedOut, setDeployTimedOut] = useState(false);
+
+  const isDeploying = wallet?.address === '';
+  const deployTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Deploy timeout: if address stays empty for 60s, show error
+  useEffect(() => {
+    if (isDeploying) {
+      deployTimerRef.current = setTimeout(() => {
+        setDeployTimedOut(true);
+      }, DEPLOY_TIMEOUT_MS);
+    } else {
+      // Address resolved — clear timer and reset
+      if (deployTimerRef.current) {
+        clearTimeout(deployTimerRef.current);
+        deployTimerRef.current = null;
+      }
+      setDeployTimedOut(false);
+    }
+
+    return () => {
+      if (deployTimerRef.current) {
+        clearTimeout(deployTimerRef.current);
+      }
+    };
+  }, [isDeploying]);
 
   const fetchData = useCallback(async () => {
     if (!wallet?.address) {
@@ -146,6 +176,9 @@ export default function DashboardPage() {
       router.push('/app');
       return;
     }
+    // Don't fetch data while deploying (address is empty)
+    if (!wallet.address) return;
+
     fetchData();
     const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
@@ -213,10 +246,35 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-950 pb-20">
       <main className="mx-auto max-w-lg px-4 pt-8">
+        {/* Deploy in progress banner */}
+        {isDeploying && !deployTimedOut && (
+          <div className="mb-6 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Spinner />
+              <p className="text-sm font-medium text-blue-400">Setting up your wallet...</p>
+            </div>
+            <p className="text-xs text-gray-500">This usually takes a few seconds</p>
+          </div>
+        )}
+
+        {/* Deploy timeout error */}
+        {isDeploying && deployTimedOut && (
+          <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/5 p-5 text-center">
+            <p className="text-sm font-medium text-red-400 mb-1">Something went wrong</p>
+            <p className="text-xs text-gray-500 mb-4">Wallet setup is taking too long. Please try again.</p>
+            <button
+              onClick={() => router.push('/app')}
+              className="rounded-xl bg-red-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600"
+            >
+              Back to login
+            </button>
+          </div>
+        )}
+
         {/* Greeting + Balance */}
         <div className="mb-6">
           <p className="mb-1 text-sm text-gray-400">{getGreeting()}</p>
-          {isLoading ? (
+          {isLoading || isDeploying ? (
             <div className="h-10 w-48 animate-pulse rounded-lg bg-gray-800" />
           ) : (
             <p className="text-4xl font-bold tracking-tight">
@@ -226,20 +284,20 @@ export default function DashboardPage() {
         </div>
 
         {/* Distribution bar */}
-        {!isLoading && segments.length > 0 && (
+        {!isLoading && !isDeploying && segments.length > 0 && (
           <div className="mb-8">
             <DistributionBar segments={segments} />
           </div>
         )}
 
-        {/* Quick actions */}
+        {/* Quick actions — disabled while deploying */}
         <div className="mb-6">
-          <QuickActions onReceive={() => setShowReceiveModal(true)} />
+          <QuickActions onReceive={() => setShowReceiveModal(true)} disabled={isDeploying} />
         </div>
 
         {/* Asset list */}
         <div className="mb-6 rounded-2xl border border-gray-800/50 bg-gray-900/50 p-2">
-          {isLoading ? (
+          {isLoading || isDeploying ? (
             <div className="space-y-3 p-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="flex items-center gap-3">
