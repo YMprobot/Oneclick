@@ -8,43 +8,10 @@ import { createPasskey, signIn } from '@/lib/webauthn';
 import { RELAYER_URL } from '@/lib/constants';
 import { Spinner } from '@/components/Spinner';
 
-function isInAppBrowser(): boolean {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent || '';
-
-  // Telegram: SFSafariViewController on iOS has identical Safari UA,
-  // but Telegram injects JS objects we can detect
-  if ('TelegramWebviewProxy' in window || 'Telegram' in window) {
-    return true;
-  }
-
-  // Specific app detection via UA string
-  if (/FBAN|FBAV|Instagram|Twitter|Telegram|TelegramBot|Discord|Line|Snapchat|WeChat|MicroMessenger/i.test(ua)) {
-    return true;
-  }
-
-  // iOS: WKWebView doesn't have "Safari/" in UA, real Safari always does
-  if (/iPhone|iPad|iPod/.test(ua) && !(/Safari\//.test(ua))) {
-    return true;
-  }
-
-  // Android: detect WebView
-  if (/Android/.test(ua) && /wv|\.0\.0\.0/.test(ua)) {
-    return true;
-  }
-
-  return false;
-}
-
 function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false;
   return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-}
-
-function isAndroid(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return /Android/i.test(navigator.userAgent);
 }
 
 export default function LoginPage() {
@@ -52,10 +19,13 @@ export default function LoginPage() {
   const { setWallet } = useWallet();
   const [loading, setLoading] = useState<'create' | 'signin' | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [inApp, setInApp] = useState(false);
+  const [webauthnBlocked, setWebauthnBlocked] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [webauthnSupported, setWebauthnSupported] = useState(true);
   useEffect(() => {
-    setInApp(isInAppBrowser());
+    if (typeof window !== 'undefined') {
+      setWebauthnSupported(window.PublicKeyCredential !== undefined);
+    }
   }, []);
 
   async function deployAndRedirect(passkey: { credentialId: string; pubKeyX: string; pubKeyY: string }) {
@@ -98,8 +68,12 @@ export default function LoginPage() {
       const passkey = await createPasskey('oneclick-user');
       await deployAndRedirect(passkey);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create passkey';
-      setError(message);
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        setWebauthnBlocked(true);
+      } else {
+        const message = err instanceof Error ? err.message : 'Failed to create passkey';
+        setError(message);
+      }
     } finally {
       setLoading(null);
     }
@@ -113,8 +87,12 @@ export default function LoginPage() {
       const passkey = await signIn();
       await deployAndRedirect(passkey);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sign in';
-      setError(message);
+      if (err instanceof DOMException && err.name === 'NotAllowedError') {
+        setWebauthnBlocked(true);
+      } else {
+        const message = err instanceof Error ? err.message : 'Failed to sign in';
+        setError(message);
+      }
     } finally {
       setLoading(null);
     }
@@ -145,8 +123,14 @@ export default function LoginPage() {
           <p className="mt-2 text-gray-400">One fingerprint. Every asset.</p>
         </div>
 
-        {inApp ? (
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
+        {!webauthnSupported && (
+          <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
+            <p className="text-sm text-amber-400">Your browser does not support passkeys. Please use a modern browser.</p>
+          </div>
+        )}
+
+        {webauthnBlocked && (
+          <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
             <svg className="mx-auto mb-3" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               <path d="M12 8v4" />
@@ -156,8 +140,8 @@ export default function LoginPage() {
               Open in your browser
             </h2>
             <p className="mt-2 text-sm text-gray-400 leading-relaxed">
-              For security, biometric login requires a full browser.
-              In-app browsers don&apos;t support passkeys.
+              Biometric login was blocked. This usually happens in in-app browsers.
+              Please open this page in your regular browser.
             </p>
             <button
               onClick={handleOpenInBrowser}
@@ -173,8 +157,8 @@ export default function LoginPage() {
               {isIOS() ? 'Copy the link and paste it in Safari' : 'Paste the link in your browser'}
             </p>
           </div>
-        ) : (
-          <>
+        )}
+
             <button
               onClick={handleCreateWallet}
               disabled={isLoading}
@@ -222,8 +206,6 @@ export default function LoginPage() {
             {error && (
               <p className="mt-4 text-center text-sm text-red-400">{error}</p>
             )}
-          </>
-        )}
 
         <p className="mt-8 text-center text-xs text-gray-600">
           Powered by Avalanche
