@@ -140,8 +140,8 @@ oneclick/
 Phase 1 COMPLETE. All contracts deployed on 3 chains (Fuji, C-Chain, BEAM). Relayer live on Railway (13 endpoints). SDK published on npm. Demo deployed on Vercel. 39/39 tests passing. Smart Route, TraderJoe swap, ICM key sync, Paymaster — all working.
 
 ### Deployed Infrastructure
-- **Relayer:** https://oneclick.up.railway.app
-- **Demo:** https://oneclick-orcin-nine.vercel.app
+- **Relayer:** https://api.one-click.cc
+- **Demo:** https://one-click.cc
 - **SDK:** https://www.npmjs.com/package/oneclick-wallet-sdk
 - **Factory:** `0x7ECeA257d8Fe653CA6C24CE744D589784DE5B188`
 - **Paymaster:** `0xFe1Dd7F4A8DbD7e9C92Eb7c79c9331E3f8cD494E`

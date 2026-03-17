@@ -107,8 +107,8 @@ Salts: `FACTORY_SALT = keccak256("oneclick-v2-factory")`, `PAYMASTER_SALT = kecc
 
 | Component | Host | URL |
 |-----------|------|-----|
-| Demo app | Vercel | https://oneclick-orcin-nine.vercel.app |
-| Relayer | Railway | https://oneclick.up.railway.app |
+| Demo app | Vercel | https://one-click.cc |
+| Relayer | Railway | https://api.one-click.cc |
 | Repo | GitHub | https://github.com/YMprobot/Oneclick |
 | Contracts | Fuji + C-Chain + BEAM | See table above |
 
@@ -179,7 +179,7 @@ oneclick/
 
 ## 7. Relayer API Endpoints
 
-Base URL: `https://oneclick.up.railway.app`
+Base URL: `https://api.one-click.cc`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -276,7 +276,7 @@ Mocks: `MockP256Verifier` (always returns 1), `MockTeleporterMessenger` (capture
 |----------|----------|---------|
 | `NEXT_PUBLIC_RELAYER_URL` | No | `http://localhost:3000` |
 
-Production: `https://oneclick.up.railway.app`
+Production: `https://api.one-click.cc`
 
 ---
 

@@ -11,7 +11,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: resolve(__dirname, '..', '.env') });
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://one-click.cc',
+    'https://www.one-click.cc',
+    'http://localhost:3001',
+    'http://localhost:3000',
+  ],
+}));
 app.use(express.json());
 
 // Deterministic contract addresses — same on all chains (deployed via CREATE2 + Nick's Factory)

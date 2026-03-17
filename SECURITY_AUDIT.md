@@ -127,7 +127,7 @@ The most urgent issues are: (1) the relayer private key on disk with no rotation
 - **File:** `relayer/src/index.ts:14` — `app.use(cors())`
 - **Description:** CORS is set to allow ALL origins (`*`). Any website can make requests to the relayer API.
 - **Impact:** Malicious sites can silently interact with the relayer if a user visits them, potentially deploying wallets or submitting transactions.
-- **Fix:** Restrict CORS to specific origins: `cors({ origin: ['https://oneclick-orcin-nine.vercel.app', 'http://localhost:3001'] })`.
+- **Fix:** Restrict CORS to specific origins: `cors({ origin: ['https://one-click.cc', 'http://localhost:3001'] })`.
 - **Status:** OPEN.
 
 ### R-04: WebAuthn signature reuse across multiple transactions [HIGH]
@@ -245,7 +245,7 @@ The most urgent issues are: (1) the relayer private key on disk with no rotation
 ### D-04: `.env.local` committed to git [INFORMATIONAL]
 
 - **File:** `demo/.env.local`
-- **Description:** `.env.local` contains only `NEXT_PUBLIC_RELAYER_URL=https://oneclick.up.railway.app` which is public information (NEXT_PUBLIC prefix). However, committing `.env.local` is against Next.js conventions.
+- **Description:** `.env.local` contains only `NEXT_PUBLIC_RELAYER_URL=https://api.one-click.cc` which is public information (NEXT_PUBLIC prefix). However, committing `.env.local` is against Next.js conventions.
 - **Impact:** No security impact (only public env vars). Convention violation.
 - **Fix:** Add `demo/.env.local` to `.gitignore`.
 - **Status:** OPEN.
