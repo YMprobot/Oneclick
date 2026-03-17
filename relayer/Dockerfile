@@ -1,5 +1,7 @@
 FROM node:20-alpine
 
+RUN apk add --no-cache su-exec
+
 WORKDIR /app
 
 COPY package*.json ./
@@ -8,10 +10,11 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-RUN mkdir -p /app/data && chown -R node:node /app/data
+RUN mkdir -p /app/data
 
 EXPOSE 3000
 
-USER node
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-CMD ["node", "dist/index.js"]
+CMD ["/entrypoint.sh"]
