@@ -38,7 +38,7 @@ export function ComingSoonCards() {
               <span className="text-sm font-semibold text-white">{feature.title}</span>
             </div>
             <p className="text-xs text-gray-400 mt-1">{feature.description}</p>
-            <span className="absolute bottom-3 right-3 bg-gray-800/80 text-[10px] text-gray-400 font-medium uppercase tracking-wider rounded-full px-2.5 py-0.5">
+            <span className="absolute top-3 right-3 bg-gray-800/80 text-[10px] text-gray-400 font-medium uppercase tracking-wider rounded-full px-2.5 py-0.5">
               Coming Soon
             </span>
           </div>

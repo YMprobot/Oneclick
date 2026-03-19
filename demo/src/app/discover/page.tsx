@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { BottomNav } from '@/components/BottomNav';
 
+type IntegrationStatus = 'live' | 'coming-soon' | 'none';
+
 interface DApp {
   id: string;
   name: string;
@@ -14,6 +16,7 @@ interface DApp {
   logo: string;
   tags: string[];
   featured?: boolean;
+  integrationStatus: IntegrationStatus;
 }
 
 const DAPPS: DApp[] = [
@@ -26,6 +29,7 @@ const DAPPS: DApp[] = [
     logo: '🔄',
     tags: ['DEX', 'Swap'],
     featured: true,
+    integrationStatus: 'none',
   },
   {
     id: 'benqi',
@@ -36,6 +40,7 @@ const DAPPS: DApp[] = [
     logo: '🏦',
     tags: ['Lending', 'Staking'],
     featured: true,
+    integrationStatus: 'none',
   },
   {
     id: 'dexalot',
@@ -45,6 +50,7 @@ const DAPPS: DApp[] = [
     url: 'https://dexalot.com',
     logo: '📊',
     tags: ['DEX', 'Orderbook'],
+    integrationStatus: 'none',
   },
   {
     id: 'gogopool',
@@ -54,6 +60,7 @@ const DAPPS: DApp[] = [
     url: 'https://gogopool.com',
     logo: '🏊',
     tags: ['Staking', 'Validators'],
+    integrationStatus: 'none',
   },
   {
     id: 'stargate',
@@ -63,6 +70,7 @@ const DAPPS: DApp[] = [
     url: 'https://stargate.finance',
     logo: '🌉',
     tags: ['Bridge', 'Cross-chain'],
+    integrationStatus: 'none',
   },
   {
     id: 'beam',
@@ -73,6 +81,7 @@ const DAPPS: DApp[] = [
     logo: '🎮',
     tags: ['L1', 'Gaming'],
     featured: true,
+    integrationStatus: 'coming-soon',
   },
   {
     id: 'shrapnel',
@@ -82,6 +91,7 @@ const DAPPS: DApp[] = [
     url: 'https://shrapnel.com',
     logo: '💥',
     tags: ['FPS', 'AAA'],
+    integrationStatus: 'none',
   },
   {
     id: 'off-the-grid',
@@ -91,6 +101,7 @@ const DAPPS: DApp[] = [
     url: 'https://offthegrid.fun',
     logo: '🔫',
     tags: ['Battle Royale', 'GUNZ'],
+    integrationStatus: 'none',
   },
   {
     id: 'securitize',
@@ -101,6 +112,7 @@ const DAPPS: DApp[] = [
     logo: '🏛️',
     tags: ['Tokenization', 'Bonds'],
     featured: true,
+    integrationStatus: 'none',
   },
   {
     id: 'intain',
@@ -110,6 +122,7 @@ const DAPPS: DApp[] = [
     url: 'https://intain.io',
     logo: '📋',
     tags: ['Structured Finance'],
+    integrationStatus: 'none',
   },
   {
     id: 'the-arena',
@@ -119,15 +132,7 @@ const DAPPS: DApp[] = [
     url: 'https://arena.social',
     logo: '🏟️',
     tags: ['Social'],
-  },
-  {
-    id: 'core-wallet',
-    name: 'Core',
-    description: 'Native Avalanche wallet & portfolio tracker',
-    category: 'Infrastructure',
-    url: 'https://core.app',
-    logo: '💎',
-    tags: ['Wallet', 'Portfolio'],
+    integrationStatus: 'none',
   },
 ];
 
@@ -149,11 +154,15 @@ export default function DiscoverPage() {
 
   if (!hydrated || !wallet) return null;
 
-  const filteredDApps = activeFilter === 'All'
-    ? DAPPS
-    : DAPPS.filter((d) => d.category === activeFilter);
+  const statusOrder: Record<IntegrationStatus, number> = { live: 0, 'coming-soon': 1, none: 2 };
 
-  const featuredDApps = DAPPS.filter((d) => d.featured);
+  const filteredDApps = (activeFilter === 'All'
+    ? DAPPS
+    : DAPPS.filter((d) => d.category === activeFilter)
+  ).toSorted((a, b) => statusOrder[a.integrationStatus] - statusOrder[b.integrationStatus]);
+
+  const featuredIds = ['trader-joe', 'beam', 'securitize'];
+  const featuredDApps = featuredIds.map((id) => DAPPS.find((d) => d.id === id)!!);
 
   return (
     <div className="min-h-screen bg-gray-950 pb-20">
@@ -185,24 +194,19 @@ export default function DiscoverPage() {
         {activeFilter === 'All' && (
           <div className="mb-6">
             <h2 className="mb-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Featured</h2>
-            <div className="flex gap-3 overflow-x-auto pb-2">
+            <div className="grid grid-cols-3 gap-2.5">
               {featuredDApps.map((dapp) => (
-                <div
+                <a
                   key={dapp.id}
-                  className="w-44 shrink-0 rounded-xl border border-gray-800/50 bg-gray-900/50 p-4"
+                  href={dapp.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-xl border border-gray-800/50 bg-gray-900/50 p-3 transition-colors hover:border-gray-700"
                 >
-                  <div className="mb-2 text-2xl">{dapp.logo}</div>
-                  <p className="text-sm font-semibold">{dapp.name}</p>
-                  <p className="mt-1 text-xs text-gray-400 line-clamp-2">{dapp.description}</p>
-                  <a
-                    href={dapp.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-block text-xs font-medium text-red-400 hover:text-red-300"
-                  >
-                    Open &rarr;
-                  </a>
-                </div>
+                  <div className="mb-2 text-xl">{dapp.logo}</div>
+                  <p className="text-xs font-semibold truncate">{dapp.name}</p>
+                  <p className="mt-0.5 text-[10px] text-gray-400 line-clamp-2 leading-tight">{dapp.description}</p>
+                </a>
               ))}
             </div>
           </div>
@@ -222,7 +226,7 @@ export default function DiscoverPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">{dapp.name}</p>
                   <p className="text-xs text-gray-400 truncate">{dapp.description}</p>
-                  <div className="mt-1 flex gap-1.5">
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {dapp.tags.map((tag) => (
                       <span
                         key={tag}
@@ -231,6 +235,16 @@ export default function DiscoverPage() {
                         {tag}
                       </span>
                     ))}
+                    {dapp.integrationStatus === 'live' && (
+                      <span className="rounded-full border border-green-500/20 bg-green-500/10 px-2.5 py-0.5 text-[10px] font-medium text-green-400">
+                        Works with OneClick
+                      </span>
+                    )}
+                    {dapp.integrationStatus === 'coming-soon' && (
+                      <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-0.5 text-[10px] font-medium text-blue-400">
+                        Integration coming soon
+                      </span>
+                    )}
                   </div>
                 </div>
                 <a
@@ -246,26 +260,25 @@ export default function DiscoverPage() {
           </div>
         </div>
 
-        {/* Coming Soon banner */}
-        <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-900/30 p-5 text-center mt-6">
-          <p className="text-sm font-medium mb-1">More integrations coming soon</p>
-          <p className="text-xs text-gray-400 mb-1">
-            OneClick is building native integrations with these dApps.
-          </p>
-          <p className="text-xs text-gray-400 mb-3">
-            Your fingerprint = your access.
-          </p>
-          <p className="text-xs text-gray-500">
-            Want your project listed?{' '}
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-red-400 hover:text-red-300"
-            >
-              GitHub &rarr; Issues
-            </a>
-          </p>
+        {/* CTA banner */}
+        <div className="mt-8 mb-6 rounded-2xl border border-gray-800/50 bg-gradient-to-r from-red-500/5 to-orange-500/5 p-5">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🔌</span>
+            <div>
+              <p className="text-sm font-semibold text-white">Building on Avalanche?</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Let your users log in with fingerprint. 5 lines of code to integrate.
+              </p>
+              <a
+                href="https://github.com/YMprobot/Oneclick"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-3 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
+              >
+                View Integration Guide &rarr;
+              </a>
+            </div>
+          </div>
         </div>
       </main>
 
