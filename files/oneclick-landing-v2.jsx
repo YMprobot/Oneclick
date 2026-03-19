@@ -68,7 +68,7 @@ function Hero() {
         </p>
 
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <a href="https://oneclick-orcin-nine.vercel.app" target="_blank" rel="noreferrer" style={{ background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, color: "#fff", padding: "13px 28px", borderRadius: 10, textDecoration: "none", fontSize: 15, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 8, boxShadow: `0 6px 28px ${C.accentGlow}` }}>
+          <a href="https://one-click.cc" target="_blank" rel="noreferrer" style={{ background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, color: "#fff", padding: "13px 28px", borderRadius: 10, textDecoration: "none", fontSize: 15, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 8, boxShadow: `0 6px 28px ${C.accentGlow}` }}>
             Try Demo <Arrow/>
           </a>
           <a href="https://github.com/YMprobot/Oneclick" target="_blank" rel="noreferrer" style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.text, padding: "13px 28px", borderRadius: 10, textDecoration: "none", fontSize: 15, fontWeight: 600 }}>
@@ -442,7 +442,7 @@ function SDKRoadmapFooter() {
             <span style={{ fontSize: 12, color: C.dim, marginLeft: 6 }}>One Fingerprint. Every Asset.</span>
           </div>
           <div style={{ display: "flex", gap: 20 }}>
-            {[["GitHub", "https://github.com/YMprobot/Oneclick"], ["npm", "https://www.npmjs.com/package/oneclick-wallet-sdk"], ["Demo", "https://oneclick-orcin-nine.vercel.app"]].map(([l, h]) => (
+            {[["GitHub", "https://github.com/YMprobot/Oneclick"], ["npm", "https://www.npmjs.com/package/oneclick-wallet-sdk"], ["Demo", "https://one-click.cc"]].map(([l, h]) => (
               <a key={l} href={h} target="_blank" rel="noreferrer" style={{ color: C.muted, textDecoration: "none", fontSize: 12, fontWeight: 500 }}>{l}</a>
             ))}
           </div>
@@ -472,7 +472,7 @@ function Nav() {
           <div style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 15, color: "#fff" }}>1</div>
           <span style={{ fontWeight: 700, fontSize: 17, color: C.text, letterSpacing: "-0.02em" }}>OneClick</span>
         </div>
-        <a href="https://oneclick-orcin-nine.vercel.app" target="_blank" rel="noreferrer" style={{
+        <a href="https://one-click.cc" target="_blank" rel="noreferrer" style={{
           background: `linear-gradient(135deg, ${C.accent}, #ff8a4c)`, color: "#fff", padding: "7px 18px",
           borderRadius: 8, textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
           Launch App

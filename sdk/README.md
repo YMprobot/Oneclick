@@ -1,22 +1,22 @@
-# @anthropic-oneclick/sdk
+# oneclick-wallet-sdk
 
-TypeScript SDK for **OneClick** -- passkey-based smart wallets on Avalanche.
+TypeScript SDK for **OneClick** — passkey-based smart wallets on Avalanche.
 
 Users authenticate with FaceID/TouchID. No seed phrases, no gas fees, no network switching.
 
 ## Install
 
 ```bash
-npm install @anthropic-oneclick/sdk
+npm install oneclick-wallet-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { connect } from '@anthropic-oneclick/sdk';
+import { connect } from 'oneclick-wallet-sdk';
 
-// 1. Connect -- creates a passkey and deploys a smart wallet
-const wallet = await connect({ relayerUrl: 'https://your-relayer.example.com' });
+// 1. Connect — creates a passkey and deploys a smart wallet
+const wallet = await connect({ relayerUrl: 'https://api.one-click.cc' });
 
 console.log('Wallet address:', wallet.address);
 

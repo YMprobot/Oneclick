@@ -1,10 +1,18 @@
 # OneClick — One Fingerprint. Every Asset.
 
-Universal smart wallet with passkey authentication for Avalanche L1 blockchains. No seed phrases. No network switching. No gas fees.
+Avalanche-native wallet onboarding SDK for apps, starting with Beam gaming. Passkey login, sponsored gas, cross-chain routing. No seed phrases. No network switching. No gas fees.
 
-**[Live Demo](https://one-click.cc)** | **[Relayer API](https://api.one-click.cc/health)**
+**[Live Demo](https://one-click.cc)** | **[SDK on npm](https://www.npmjs.com/package/oneclick-wallet-sdk)** | **[Relayer API](https://api.one-click.cc/health)**
 
 > Built for **Avalanche Build Games 2026**.
+
+## Team
+
+Two co-founders whose backgrounds directly shape the product and GTM.
+
+**Co-founder 1 — Gaming & Web3 Domain Expert.** Professional competitive gamer turned Web3 builder. Deep understanding of what kills player retention — and firsthand experience with wallet friction that drives gamers away. This domain expertise is why OneClick starts with Beam gaming.
+
+**Co-founder 2 — Serial Entrepreneur & Operations.** Multiple businesses built from zero. Experience managing teams of up to 200 people. Brings GTM discipline, partner negotiations, and operational rigor.
 
 ---
 
@@ -96,8 +104,8 @@ Change your passkey on one L1 → automatically synced to all others via Avalanc
 ### RWA (Real-World Assets)
 Access tokenized bonds, real estate, gold — without crypto knowledge. Fingerprint login, card funding, portfolio in USD. Like Robinhood, but on blockchain.
 
-### Gaming
-Zero-friction onboarding — player taps finger and plays. No MetaMask, no seed phrase. Gas as marketing spend via Paymaster. 30-min SDK integration replaces weeks of WalletConnect setup.
+### Gaming (Beachhead — Beam)
+Our primary focus. Beam (Chain ID 4337) is Avalanche's flagship gaming L1. Gamers have zero tolerance for wallet setup — they want tap and play. OneClick eliminates every friction point: fingerprint login, sponsored gas via Paymaster, session gaming mode (planned) that batches all in-game transactions so players are never interrupted. 30-min SDK integration replaces weeks of WalletConnect setup.
 
 ### DeFi
 Liquidity from any L1 — users interact with protocols regardless of which chain they're on. Smart Route handles cross-chain swaps automatically.
@@ -140,7 +148,7 @@ OneClickWalletTest: 20 tests
   ├── Execute with P256 signature, WebAuthn, relayer-only
   ├── Nonce increment, access control
   ├── Paymaster deposit/withdraw/sponsor (P256 + WebAuthn)
-  └── Smart route multi-step (WebAuthn + executeAsRelayer)
+  └── Smart route multi-step (WebAuthn + relayer execution)
 
 ICMSyncTest: 19 tests
   ├── Admin: register remote contracts, wallets
@@ -292,16 +300,29 @@ oneclick/
 └── README.md
 ```
 
-## Monetization
+## Design Partners
 
-| Stream | How It Works | Phase |
-|--------|-------------|-------|
-| Paymaster Fee | 3-10% on gas sponsorship paid by dApps | Phase 2 |
-| Smart Route Fee | 0.1-0.3% on auto-swap volume | Phase 2 |
-| AI Strategy Fee | Performance fee (2-5%) or subscription | Phase 3 |
-| Hosted Relayer SaaS | $99-499/mo for managed infrastructure | Phase 3 |
-| WaaS (per-wallet) | $0.01-0.10/wallet + per-tx for enterprises | Phase 4 |
-| MCP API calls | Per-call pricing for AI agents | Phase 3 |
+Currently in conversation with first integrators:
+
+- **PyVax** — Developer tooling, Avalanche C-Chain
+- **Luminoria Tactics** — Mobile card game on Avalanche, hybrid Web2+Web3
+- **Dexalot** — On-chain order book DEX, C-Chain
+- **Benqi** — Lending protocol, C-Chain
+
+First design partners receive white-glove integration support, pre-funded Paymaster for 30 days, feature prioritization, and co-marketed case study.
+
+## Pricing
+
+SaaS model based on wallets created — our value metric that directly correlates with customer growth.
+
+| Tier | Price | Wallets | Target |
+|------|-------|---------|--------|
+| Free | $0/mo | Up to 100 | Developers testing SDK, hackathon projects |
+| Starter | $49/mo | Up to 1,000 | Indie games, small dApps |
+| Growth | $199/mo | Up to 10,000 | Growing protocols, mid-size games |
+| Enterprise | Custom | Unlimited | L1 teams, large platforms |
+
+Additional revenue: gas sponsorship pass-through, embedded DeFi earn commission (0.1–0.5% on staking/lending via DEX partners).
 
 ## Roadmap
 
@@ -319,38 +340,30 @@ Phase 1 completed.
 - [x] 39/39 tests passing
 - [x] SDK published on npm ([oneclick-wallet-sdk](https://www.npmjs.com/package/oneclick-wallet-sdk))
 
-### Phase 2: RWA, AI Agents & Core UX (Q2 2026)
-Target: 5 dApp integrations, 1,000 wallets.
+### Phase 2: Activation & Monetization (Q2 2026)
+Target: 5–10 integrations, first paying customers.
 
-- [ ] Session Keys — granular permissions (time, contract whitelist, spending caps)
-- [ ] RWA Marketplace UI — browse & invest in tokenized bonds, real estate, commodities
-- [ ] Multi-method Login — email + Google as passkey fallback
-- [ ] Fiat On-Ramp — Visa/Mastercard/Apple Pay via MoonPay or Transak
-- [ ] AI Agent SDK — `connectAgent()` with session keys + permission bounds
-- [ ] MCP Server — OneClick as tool for Claude/GPT/any LLM
-- [ ] ERC-8183 support — trustless AI agent commerce (task escrow, evaluator verification)
-- [ ] Account Recovery — social recovery (2-of-3 contacts)
-- [ ] Batch Transactions — approve + swap + stake in one tap
+- [ ] Guided first-action flows and partner onboarding templates
+- [ ] Dev analytics dashboard (wallets, transactions, chains)
+- [ ] Hosted Relayer SaaS tiers (Free/$49/$199/Enterprise)
+- [ ] **Session Gaming Mode** — pre-authorized gaming sessions with transaction batching. Player approves once, all in-game actions batched and submitted together. No popups mid-game, reduced gas costs.
+- [ ] Fiat on-ramp (MoonPay/Transak) — when partner demand validates need
 
-### Phase 3: Scale & Ecosystem (Q3-Q4 2026)
-Target: 20+ L1s, 10K wallets.
+### Phase 3: Expansion (Q3 2026)
+Target: 15–30 integrations, 5–10 paying customers.
 
-- [ ] 20+ Avalanche L1s with auto-deploy
-- [ ] MCP Registry Publication — listed in Anthropic MCP registry
-- [ ] AI Strategy Marketplace — community-created yield/DCA/arbitrage strategies
+- [ ] Session keys for programmatic access
+- [ ] P2P transfers between OneClick wallets
+- [ ] Auto-bridge between chains (Smart Route extension)
+- [ ] Embedded DeFi Earn — staking/lending via TraderJoe, Benqi directly in-wallet (0.1–0.5% commission)
+
+### Long-term Optionality (Q4 2026+)
+Future possibilities, not current commitments:
+
+- [ ] AI Agent SDK (when ERC-8183 ecosystem matures)
+- [ ] WaaS (wallet-as-a-service) enterprise tier
+- [ ] Additional EVM chain support beyond Avalanche
 - [ ] Mobile SDK (React Native)
-- [ ] Decentralized relayer network
-- [ ] DEX Aggregation beyond TraderJoe
-- [ ] Compliance tooling (KYC/AML for RWA)
-
-### Phase 4: Mass Adoption (2027)
-Target: 1M+ wallets, $1M+ TVL.
-
-- [ ] Full Fiat Lifecycle — card → invest → earn yield → withdraw to bank
-- [ ] Enterprise WaaS (Wallet-as-a-Service)
-- [ ] Autonomous Agent Economy — agents with own wallets
-- [ ] EIP-7702 support — upgrade existing EOAs
-- [ ] Protocol decentralization — governance token, DAO
 
 ## License
 
