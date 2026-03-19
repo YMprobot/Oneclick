@@ -12,6 +12,8 @@ import { QuickActions } from '@/components/QuickActions';
 import { ReceiveModal } from '@/components/ReceiveModal';
 import { TransactionList } from '@/components/TransactionList';
 import { Spinner } from '@/components/Spinner';
+import { OnboardingChecklist } from '@/components/OnboardingChecklist';
+import { ComingSoonCards } from '@/components/ComingSoonCards';
 
 interface TokenBalance {
   symbol: string;
@@ -295,6 +297,16 @@ export default function DashboardPage() {
           <QuickActions onReceive={() => setShowReceiveModal(true)} disabled={isDeploying} />
         </div>
 
+        {/* Onboarding checklist — shows only for empty wallets */}
+        {!isLoading && !isDeploying && (
+          <OnboardingChecklist
+            walletAddress={wallet.address}
+            hasAssets={totalUsd > 0}
+            hasTransactions={transactions.length > 0}
+            onReceive={() => setShowReceiveModal(true)}
+          />
+        )}
+
         {/* Asset list */}
         <div className="mb-6 rounded-2xl border border-gray-800/50 bg-gray-900/50 p-2">
           {isLoading || isDeploying ? (
@@ -313,6 +325,9 @@ export default function DashboardPage() {
             <AssetList assets={assets} />
           )}
         </div>
+
+        {/* Coming Soon features */}
+        {!isLoading && !isDeploying && <ComingSoonCards />}
 
         {/* Recent transactions */}
         <div className="rounded-2xl border border-gray-800/50 bg-gray-900/50 p-4">

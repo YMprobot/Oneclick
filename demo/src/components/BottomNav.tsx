@@ -23,6 +23,7 @@ export function BottomNav() {
 
   const tabs: Tab[] = [
     { label: 'Home', path: '/dashboard', icon: HomeIcon },
+    { label: 'Discover', path: '/discover', icon: DiscoverIcon },
     { label: 'Swap', path: '/swap', icon: SwapIcon },
     { label: 'Activity', path: '/activity', icon: ActivityIcon },
     { label: 'Log out', path: '', icon: LogoutIcon, action: handleDisconnect },
@@ -37,7 +38,7 @@ export function BottomNav() {
             <button
               key={tab.label}
               onClick={tab.action ?? (() => router.push(tab.path))}
-              className={`flex flex-col items-center gap-0.5 px-4 py-1 transition-colors ${
+              className={`flex flex-col items-center gap-0.5 px-2 py-1 transition-colors ${
                 active ? 'text-red-500' : 'text-gray-500 hover:text-gray-300'
               }`}
             >
@@ -48,6 +49,16 @@ export function BottomNav() {
         })}
       </div>
     </nav>
+  );
+}
+
+function DiscoverIcon({ active }: { active: boolean }) {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={active ? 2.5 : 2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
   );
 }
 
