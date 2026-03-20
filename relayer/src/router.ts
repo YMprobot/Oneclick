@@ -807,6 +807,8 @@ export function createRouter(executor: Executor): Router {
       const slippagePct = typeof slippage === 'number' ? slippage : 0.01;
 
       let hash: string;
+      let swapFromAmount = '';
+      let swapToAmount = '';
 
       if (isFromNative && !isToNative) {
         // AVAX -> Token
@@ -816,11 +818,17 @@ export function createRouter(executor: Executor): Router {
           return;
         }
 
+        swapFromAmount = (Number(BigInt(amount)) / 1e18).toFixed(4);
+
         // Calculate minimum output with 5% max slippage
         const avaxPriceUsd = await getAvaxPrice();
         const avaxIn = Number(BigInt(amount)) / 1e18;
         const estimatedOutput = BigInt(Math.floor(avaxIn * avaxPriceUsd * 10 ** tokenConfig.decimals));
         const amountOutMin = estimatedOutput * 95n / 100n;
+
+        // Snapshot token balance before swap to calculate actual output
+        const tokenContract = new ethers.Contract(tokenConfig.address, ERC20_ABI, executor.getProvider(chainId));
+        const balanceBefore: bigint = await tokenContract.balanceOf(walletAddress).catch(() => 0n);
 
         const swapCalldata = buildSwapNativeForTokensCalldata(
           amountOutMin,
@@ -844,6 +852,15 @@ export function createRouter(executor: Executor): Router {
             2_000_000n
           );
         }
+
+        // Calculate actual output from balance diff
+        try {
+          const balanceAfter: bigint = await tokenContract.balanceOf(walletAddress);
+          const received = balanceAfter - balanceBefore;
+          swapToAmount = (Number(received) / 10 ** tokenConfig.decimals).toFixed(2);
+        } catch {
+          swapToAmount = (Number(estimatedOutput) / 10 ** tokenConfig.decimals).toFixed(2);
+        }
       } else if (!isFromNative && isToNative) {
         // Token -> AVAX: first approve, then swap
         const tokenConfig = chain.swap.tokens.find((t) => t.symbol === fromToken);
@@ -853,6 +870,10 @@ export function createRouter(executor: Executor): Router {
         }
 
         const amountBigInt = BigInt(amount);
+        swapFromAmount = (Number(amountBigInt) / 10 ** tokenConfig.decimals).toFixed(2);
+
+        // Snapshot native balance before swap
+        const nativeBalanceBefore = await executor.getProvider(chainId).getBalance(walletAddress);
 
         // Step 1: Approve router to spend tokens
         const approveCalldata = buildApproveCalldata(routerAddress, amountBigInt);
@@ -905,6 +926,15 @@ export function createRouter(executor: Executor): Router {
             2_000_000n
           );
         }
+
+        // Calculate actual AVAX received from balance diff
+        try {
+          const nativeBalanceAfter = await executor.getProvider(chainId).getBalance(walletAddress);
+          const received = nativeBalanceAfter - nativeBalanceBefore;
+          swapToAmount = (Number(received) / 1e18).toFixed(4);
+        } catch {
+          swapToAmount = (Number(estimatedAvaxOut) / 1e18).toFixed(4);
+        }
       } else {
         res.status(400).json({ error: 'Token-to-token swap not yet supported. Use AVAX as intermediary.' });
         return;
@@ -923,6 +953,12 @@ export function createRouter(executor: Executor): Router {
         status: 'confirmed',
         timestamp: Date.now(),
         txType: 'swap',
+        swapDetails: {
+          fromToken,
+          toToken,
+          fromAmount: swapFromAmount,
+          toAmount: swapToAmount,
+        },
       });
 
       console.log(`  swap confirmed: ${hash}`);

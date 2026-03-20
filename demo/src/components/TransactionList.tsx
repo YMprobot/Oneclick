@@ -4,6 +4,13 @@ interface SmartRouteStep {
   hash: string;
 }
 
+interface SwapDetails {
+  fromToken: string;
+  toToken: string;
+  fromAmount: string;
+  toAmount: string;
+}
+
 interface TransactionRecord {
   id: string;
   walletAddress: string;
@@ -18,6 +25,7 @@ interface TransactionRecord {
   timestamp: number;
   txType?: 'send' | 'swap' | 'smart-swap-send';
   smartRoute?: SmartRouteStep[];
+  swapDetails?: SwapDetails;
 }
 
 interface TransactionListProps {
@@ -95,16 +103,34 @@ export function TransactionList({ transactions }: TransactionListProps) {
                   )}
                 </div>
                 <p className="truncate text-sm">
-                  <span className="font-medium text-white">
-                    {isSmartRoute
-                      ? 'Smart Swap + Send'
-                      : isSwap
-                        ? `Swapped ${formatAmount(tx.value)} ${tx.nativeSymbol}`
-                        : `Sent ${formatAmount(tx.value)} ${tx.nativeSymbol}`}
-                  </span>{' '}
-                  <span className="font-mono text-gray-400">
-                    {isSwap ? `via ${truncateAddress(tx.target)}` : `to ${truncateAddress(tx.target)}`}
-                  </span>
+                  {isSmartRoute ? (
+                    <span className="font-medium text-white">Smart Swap + Send</span>
+                  ) : isSwap && tx.swapDetails ? (
+                    <>
+                      <span className="font-medium text-white">
+                        Swapped {tx.swapDetails.fromAmount} {tx.swapDetails.fromToken}
+                      </span>{' '}
+                      <span className="text-gray-400">→</span>{' '}
+                      <span className="font-medium text-white">
+                        {tx.swapDetails.toAmount} {tx.swapDetails.toToken}
+                      </span>
+                    </>
+                  ) : isSwap ? (
+                    <>
+                      <span className="font-medium text-white">
+                        Swapped {formatAmount(tx.value)} {tx.nativeSymbol}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium text-white">
+                        Sent {formatAmount(tx.value)} {tx.nativeSymbol}
+                      </span>{' '}
+                      <span className="font-mono text-gray-400">
+                        to {truncateAddress(tx.target)}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">

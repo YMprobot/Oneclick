@@ -7,6 +7,13 @@ export interface SmartRouteStep {
   hash: string;
 }
 
+export interface SwapDetails {
+  fromToken: string;
+  toToken: string;
+  fromAmount: string;
+  toAmount: string;
+}
+
 export interface TransactionRecord {
   id: string;
   walletAddress: string;
@@ -21,6 +28,7 @@ export interface TransactionRecord {
   timestamp: number;
   txType?: 'send' | 'swap' | 'smart-swap-send';
   smartRoute?: SmartRouteStep[];
+  swapDetails?: SwapDetails;
 }
 
 // Explorer API base URLs per chain
