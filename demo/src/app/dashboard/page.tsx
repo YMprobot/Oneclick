@@ -14,8 +14,6 @@ import { TransactionList } from '@/components/TransactionList';
 import { Spinner } from '@/components/Spinner';
 import { OnboardingChecklist } from '@/components/OnboardingChecklist';
 import { ComingSoonCards } from '@/components/ComingSoonCards';
-import { TestModeCard } from '@/components/TestModeCard';
-import { TestModeProgress as TestModeChecklist } from '@/components/TestModeProgress';
 
 interface TokenBalance {
   symbol: string;
@@ -54,15 +52,8 @@ function getGreeting(): string {
 /** Timeout in ms before showing deploy error. */
 const DEPLOY_TIMEOUT_MS = 60_000;
 
-interface TestModeProgressData {
-  testModeActive: boolean;
-  steps: { id: string; label: string; completed: boolean; description: string; action: string }[];
-  completedCount: number;
-  totalCount: number;
-}
-
 export default function DashboardPage() {
-  const { wallet, hydrated, setTestModeActive } = useWallet();
+  const { wallet, hydrated } = useWallet();
   const router = useRouter();
   const [balances, setBalances] = useState<ChainBalance[]>([]);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -71,7 +62,6 @@ export default function DashboardPage() {
   const [prices, setPrices] = useState<Record<number, number>>({});
   const [tokenBalances, setTokenBalances] = useState<Record<number, TokenBalance[]>>({});
   const [deployTimedOut, setDeployTimedOut] = useState(false);
-  const [testModeProgress, setTestModeProgress] = useState<TestModeProgressData | null>(null);
 
   const isDeploying = wallet?.address === '';
   const deployTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -173,18 +163,6 @@ export default function DashboardPage() {
       if (txRes.ok) {
         const txData: TransactionRecord[] = await txRes.json();
         setTransactions(txData);
-      }
-
-      // Fetch Test Mode progress
-      try {
-        const tmRes = await fetch(`${RELAYER_URL}/test-mode/progress?walletAddress=${wallet.address}`);
-        if (tmRes.ok) {
-          const tmData: TestModeProgressData = await tmRes.json();
-          setTestModeProgress(tmData);
-          setTestModeActive(tmData.testModeActive);
-        }
-      } catch {
-        // Test mode fetch failed — not critical
       }
     } catch (err) {
       console.error('Dashboard fetch failed:', err);
@@ -319,20 +297,8 @@ export default function DashboardPage() {
           <QuickActions onReceive={() => setShowReceiveModal(true)} disabled={isDeploying} />
         </div>
 
-        {/* Test Mode: activation card or progress checklist */}
-        {!isLoading && !isDeploying && testModeProgress?.testModeActive && (
-          <TestModeChecklist progress={testModeProgress} />
-        )}
-
-        {!isLoading && !isDeploying && !testModeProgress?.testModeActive && totalUsd < 0.01 && (
-          <TestModeCard
-            walletAddress={wallet.address}
-            onActivated={() => fetchData()}
-          />
-        )}
-
-        {/* Onboarding checklist — shows only for empty wallets without test mode */}
-        {!isLoading && !isDeploying && !testModeProgress?.testModeActive && totalUsd >= 0.01 && (
+        {/* Onboarding checklist — shows only for empty wallets */}
+        {!isLoading && !isDeploying && (
           <OnboardingChecklist
             walletAddress={wallet.address}
             hasAssets={totalUsd > 0}

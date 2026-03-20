@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useWallet } from '@/context/WalletContext';
 import { useRouter } from 'next/navigation';
 
 export function Header() {
-  const { wallet, testModeActive, disconnect } = useWallet();
+  const { wallet, disconnect } = useWallet();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  const [showPopover, setShowPopover] = useState(false);
-  const popoverRef = useRef<HTMLDivElement>(null);
 
   const handleDisconnect = useCallback(() => {
     disconnect();
@@ -32,18 +30,6 @@ export function Header() {
     setTimeout(() => setCopied(false), 1500);
   }, [wallet?.address]);
 
-  // Close popover on outside click
-  useEffect(() => {
-    if (!showPopover) return;
-    const handleClick = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setShowPopover(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showPopover]);
-
   const shortAddress = wallet?.address
     ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`
     : 'No wallet';
@@ -58,39 +44,7 @@ export function Header() {
           OneClick
         </button>
         {wallet && (
-          <div className="flex items-center gap-2">
-            {/* Test Mode Badge */}
-            {testModeActive && (
-              <div className="relative" ref={popoverRef}>
-                <button
-                  onClick={() => setShowPopover(!showPopover)}
-                  className="rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-400 transition-colors hover:bg-amber-500/25"
-                >
-                  Test Mode
-                </button>
-
-                {/* Popover */}
-                {showPopover && (
-                  <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-gray-700 bg-gray-900 p-4 shadow-xl">
-                    <h4 className="text-sm font-semibold text-white mb-2">You&apos;re in Test Mode</h4>
-                    <p className="text-xs text-gray-400 mb-3">
-                      You&apos;re using Avalanche Fuji testnet. Tokens here have no real value
-                      and are for learning purposes only.
-                    </p>
-                    <p className="text-xs text-gray-500 mb-3">
-                      To use real assets, connect to Avalanche C-Chain mainnet.
-                    </p>
-                    <button
-                      onClick={() => setShowPopover(false)}
-                      className="rounded-lg bg-gray-800 px-4 py-1.5 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-700"
-                    >
-                      Got it
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
+          <div className="flex items-center gap-3">
             <button
               onClick={handleCopyAddress}
               className="rounded-full bg-gray-800/60 px-3 py-1 font-mono text-xs text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
