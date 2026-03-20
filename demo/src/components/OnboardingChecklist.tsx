@@ -1,9 +1,44 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { RELAYER_URL } from '@/lib/constants';
 import { Spinner } from '@/components/Spinner';
+
+function Tooltip({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!show) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setShow(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [show]);
+
+  return (
+    <div className="relative flex-shrink-0" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setShow(!show)}
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        className="flex h-5 w-5 items-center justify-center rounded-full border border-gray-600 text-[10px] text-gray-500 transition-colors hover:border-gray-400 hover:text-gray-300"
+      >
+        ?
+      </button>
+      {show && (
+        <div className="absolute right-0 bottom-full mb-2 w-60 rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-300 shadow-xl z-10">
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface OnboardingChecklistProps {
   walletAddress: string;
@@ -150,29 +185,39 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
                 )}
               </div>
 
-              {/* Fund wallet step — Test Mode + Deposit buttons */}
+              {/* Fund wallet step — Deposit + Test Mode buttons */}
               {step.id === 'fund-wallet' && isFundStepActive && !step.completed && (
-                <div className="ml-10 mt-3 space-y-2">
-                  <button
-                    onClick={handleTestMode}
-                    disabled={testModeLoading}
-                    className="w-full rounded-lg bg-amber-500/10 border border-amber-500/20 px-4 py-2.5 text-sm font-semibold text-amber-400 transition-colors hover:bg-amber-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {testModeLoading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Spinner />
-                        Setting up test tokens...
-                      </span>
-                    ) : (
-                      '🧪 Activate Test Mode — Get free tokens'
-                    )}
-                  </button>
-                  <button
-                    onClick={onReceive}
-                    className="w-full rounded-lg bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-700"
-                  >
-                    Deposit
-                  </button>
+                <div className="ml-10 mt-3 space-y-2.5">
+                  {/* Deposit button */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={onReceive}
+                      className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600"
+                    >
+                      Deposit
+                    </button>
+                    <Tooltip text="Fund your wallet with AVAX, USDC, or USDT from another wallet or exchange. Once funded, you can send tokens and swap between assets." />
+                  </div>
+
+                  {/* Test Mode button */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleTestMode}
+                      disabled={testModeLoading}
+                      className="flex-1 rounded-lg px-4 py-2.5 text-sm text-gray-400 transition-colors hover:text-gray-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {testModeLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Spinner />
+                          Setting up test tokens...
+                        </span>
+                      ) : (
+                        '... or Activate Test Mode — Get free test tokens'
+                      )}
+                    </button>
+                    <Tooltip text="Get free practice tokens (1 AVAX + 5 USDC) on Fuji testnet. Perfect for first-timers — try sending, swapping, and Smart Route with zero risk." />
+                  </div>
+
                   {testModeError && (
                     <p className="text-xs text-red-400">{testModeError}</p>
                   )}
