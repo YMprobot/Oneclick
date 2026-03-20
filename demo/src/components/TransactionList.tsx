@@ -70,6 +70,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
     <div className="divide-y divide-gray-800">
       {transactions.map((tx) => {
         const isSmartRoute = tx.txType === 'smart-swap-send';
+        const isSwap = tx.txType === 'swap';
 
         return (
           <div key={tx.id} className="px-4 py-3">
@@ -87,13 +88,22 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       Smart Route
                     </span>
                   )}
+                  {isSwap && (
+                    <span className="inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-medium text-purple-400">
+                      Swap
+                    </span>
+                  )}
                 </div>
                 <p className="truncate text-sm">
                   <span className="font-medium text-white">
-                    {isSmartRoute ? 'Smart Swap + Send' : `Sent ${formatAmount(tx.value)} ${tx.nativeSymbol}`}
+                    {isSmartRoute
+                      ? 'Smart Swap + Send'
+                      : isSwap
+                        ? `Swapped ${formatAmount(tx.value)} ${tx.nativeSymbol}`
+                        : `Sent ${formatAmount(tx.value)} ${tx.nativeSymbol}`}
                   </span>{' '}
                   <span className="font-mono text-gray-400">
-                    to {truncateAddress(tx.target)}
+                    {isSwap ? `via ${truncateAddress(tx.target)}` : `to ${truncateAddress(tx.target)}`}
                   </span>
                 </p>
               </div>
