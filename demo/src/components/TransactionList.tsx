@@ -112,13 +112,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                       </span>{' '}
                       <span className="text-gray-400">→</span>{' '}
                       <span className="font-medium text-white">
-                        {tx.swapDetails.toAmount} {tx.swapDetails.toToken}
-                      </span>
-                    </>
-                  ) : isSwap ? (
-                    <>
-                      <span className="font-medium text-white">
-                        Swapped {formatAmount(tx.value)} {tx.nativeSymbol}
+                        {tx.swapDetails.toAmount ? `${tx.swapDetails.toAmount} ` : ''}{tx.swapDetails.toToken}
                       </span>
                     </>
                   ) : (
