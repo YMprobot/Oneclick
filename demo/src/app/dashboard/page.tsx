@@ -53,7 +53,7 @@ function getGreeting(): string {
 const DEPLOY_TIMEOUT_MS = 60_000;
 
 export default function DashboardPage() {
-  const { wallet, hydrated, setTestModeActive } = useWallet();
+  const { wallet, hydrated, testModeActive, setTestModeActive } = useWallet();
   const router = useRouter();
   const [balances, setBalances] = useState<ChainBalance[]>([]);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -187,6 +187,9 @@ export default function DashboardPage() {
   }, [wallet, hydrated, router, fetchData]);
 
   // Build per-chain asset list (no aggregation — each token on each chain is a separate row)
+  // Fuji chain ID — tokens on Fuji are "test" when testModeActive
+  const FUJI_CHAIN_ID = 43113;
+
   const { assets, totalUsd, segments } = useMemo(() => {
     const list: Asset[] = [];
 
@@ -195,10 +198,11 @@ export default function DashboardPage() {
       const bal = parseFloat(chain.balance);
       if (bal <= 0) continue;
       const price = prices[chain.chainId] || 0;
+      const isTest = testModeActive && chain.chainId === FUJI_CHAIN_ID;
       list.push({
-        symbol: chain.nativeSymbol,
+        symbol: isTest ? `Test ${chain.nativeSymbol}` : chain.nativeSymbol,
         amount: bal.toFixed(4),
-        usdValue: bal * price,
+        usdValue: isTest ? 0 : bal * price,
         color: chain.nativeSymbol,
         chainName: chain.chainName,
       });
@@ -208,13 +212,14 @@ export default function DashboardPage() {
     for (const [chainIdStr, tokens] of Object.entries(tokenBalances)) {
       const chainId = Number(chainIdStr);
       const chain = balances.find((b) => b.chainId === chainId);
+      const isTest = testModeActive && chainId === FUJI_CHAIN_ID;
       for (const t of tokens) {
         const bal = Number(t.balance) / Math.pow(10, t.decimals);
         if (bal <= 0) continue;
         const isStable = ['USDC', 'USDT', 'DAI'].includes(t.symbol);
-        const usd = isStable ? bal : bal * (prices[chainId] || 0);
+        const usd = isTest ? 0 : (isStable ? bal : bal * (prices[chainId] || 0));
         list.push({
-          symbol: t.symbol,
+          symbol: isTest ? `Test ${t.symbol}` : t.symbol,
           amount: bal.toFixed(2),
           usdValue: usd,
           color: t.symbol,
@@ -229,10 +234,10 @@ export default function DashboardPage() {
     // Distribution bar segments — aggregate by symbol for the bar
     const symbolTotals = new Map<string, number>();
     for (const a of list) {
+      if (a.usdValue <= 0) continue;
       symbolTotals.set(a.symbol, (symbolTotals.get(a.symbol) || 0) + a.usdValue);
     }
     const segments = Array.from(symbolTotals.entries())
-      .filter(([, usd]) => usd > 0)
       .sort(([, a], [, b]) => b - a)
       .map(([symbol, usd]) => ({
         label: symbol,
@@ -241,7 +246,7 @@ export default function DashboardPage() {
       }));
 
     return { assets: list, totalUsd, segments };
-  }, [balances, prices, tokenBalances]);
+  }, [balances, prices, tokenBalances, testModeActive]);
 
   if (!hydrated || !wallet) return null;
 
