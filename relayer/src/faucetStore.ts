@@ -12,6 +12,7 @@ export interface FundingRecord {
   fundedAt: string;
   avaxTxHash: string | null;
   usdcTxHash: string | null;
+  onboardingSkipped?: boolean;
 }
 
 type FaucetData = Record<string, FundingRecord>;
@@ -55,4 +56,18 @@ export function saveFunding(address: string, record: FundingRecord): void {
   const data = loadData();
   data[address.toLowerCase()] = record;
   saveData(data);
+}
+
+export function setOnboardingSkipped(address: string, skipped: boolean): void {
+  const data = loadData();
+  const key = address.toLowerCase();
+  if (data[key]) {
+    data[key].onboardingSkipped = skipped;
+    saveData(data);
+  }
+}
+
+export function isOnboardingSkipped(address: string): boolean {
+  const data = loadData();
+  return data[address.toLowerCase()]?.onboardingSkipped === true;
 }

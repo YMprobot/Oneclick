@@ -14,7 +14,7 @@ import {
 } from './swap.js';
 import { planTransaction } from './smartRouter.js';
 import { fundWallet } from './faucet.js';
-import { isFunded, getFunding } from './faucetStore.js';
+import { isFunded, getFunding, isOnboardingSkipped, setOnboardingSkipped } from './faucetStore.js';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -1067,7 +1067,33 @@ export function createRouter(executor: Executor): Router {
 
     const funded = isFunded(walletAddress);
     const record = funded ? getFunding(walletAddress) : null;
-    res.json({ funded, fundedAt: record?.fundedAt || null });
+    res.json({
+      funded,
+      fundedAt: record?.fundedAt || null,
+      onboardingSkipped: record?.onboardingSkipped === true,
+    });
+  });
+
+  // POST /onboarding/skip — mark onboarding as skipped
+  router.post('/onboarding/skip', (req, res) => {
+    const { walletAddress } = req.body;
+    if (!walletAddress || !ethers.isAddress(walletAddress)) {
+      res.status(400).json({ error: 'Invalid or missing walletAddress' });
+      return;
+    }
+    setOnboardingSkipped(walletAddress, true);
+    res.json({ success: true });
+  });
+
+  // POST /onboarding/resume — un-skip onboarding
+  router.post('/onboarding/resume', (req, res) => {
+    const { walletAddress } = req.body;
+    if (!walletAddress || !ethers.isAddress(walletAddress)) {
+      res.status(400).json({ error: 'Invalid or missing walletAddress' });
+      return;
+    }
+    setOnboardingSkipped(walletAddress, false);
+    res.json({ success: true });
   });
 
   // GET /health — health check

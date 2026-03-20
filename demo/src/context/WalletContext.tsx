@@ -18,7 +18,9 @@ interface WalletContextType {
   wallet: WalletState | null;
   hydrated: boolean;
   testModeActive: boolean;
+  onboardingSkipped: boolean;
   setTestModeActive: (v: boolean) => void;
+  setOnboardingSkipped: (v: boolean) => void;
   setWallet: (wallet: WalletState) => void;
   disconnect: () => void;
 }
@@ -49,6 +51,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [wallet, setWalletState] = useState<WalletState | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [testModeActive, setTestModeActiveState] = useState(false);
+  const [onboardingSkipped, setOnboardingSkippedState] = useState(false);
 
   // Hydrate from sessionStorage after mount to avoid SSR mismatch
   useEffect(() => {
@@ -66,10 +69,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
     fetch(`${RELAYER_URL}/faucet/status?walletAddress=${wallet.address}`)
       .then((r) => r.json())
-      .then((data: { funded: boolean }) => {
+      .then((data: { funded: boolean; onboardingSkipped?: boolean }) => {
         if (data.funded) {
           setTestModeActiveState(true);
           try { sessionStorage.setItem(TEST_MODE_KEY, 'true'); } catch { /* noop */ }
+        }
+        if (data.onboardingSkipped) {
+          setOnboardingSkippedState(true);
         }
       })
       .catch(() => {});
@@ -78,6 +84,18 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const setTestModeActive = (v: boolean) => {
     setTestModeActiveState(v);
     try { sessionStorage.setItem(TEST_MODE_KEY, v ? 'true' : 'false'); } catch { /* noop */ }
+  };
+
+  const setOnboardingSkipped = (v: boolean) => {
+    setOnboardingSkippedState(v);
+    if (wallet?.address) {
+      const endpoint = v ? '/onboarding/skip' : '/onboarding/resume';
+      fetch(`${RELAYER_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: wallet.address }),
+      }).catch(() => {});
+    }
   };
 
   const setWallet = (w: WalletState) => {
@@ -89,6 +107,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const disconnect = () => {
     setWalletState(null);
     setTestModeActiveState(false);
+    setOnboardingSkippedState(false);
     try {
       sessionStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(TEST_MODE_KEY);
@@ -96,7 +115,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <WalletContext.Provider value={{ wallet, hydrated, testModeActive, setTestModeActive, setWallet, disconnect }}>
+    <WalletContext.Provider value={{ wallet, hydrated, testModeActive, onboardingSkipped, setTestModeActive, setOnboardingSkipped, setWallet, disconnect }}>
       {children}
     </WalletContext.Provider>
   );

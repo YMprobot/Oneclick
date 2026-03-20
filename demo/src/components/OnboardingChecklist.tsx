@@ -61,10 +61,11 @@ interface Step {
 
 export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions, hasSwapTransaction, onReceive, onTestModeActivated }: OnboardingChecklistProps) {
   const router = useRouter();
-  const { testModeActive } = useWallet();
+  const { testModeActive, onboardingSkipped, setOnboardingSkipped } = useWallet();
   const [testModeFunded, setTestModeFunded] = useState(false);
   const [testModeLoading, setTestModeLoading] = useState(false);
   const [testModeError, setTestModeError] = useState<string | null>(null);
+  const [showSkipModal, setShowSkipModal] = useState(false);
 
   const handleTestMode = async () => {
     setTestModeLoading(true);
@@ -156,27 +157,18 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
   const completedCount = steps.filter((s) => s.completed).length;
   const allCompleted = steps.every((s) => s.completed);
 
-  const [skipped, setSkipped] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('oneclick_onboarding_skipped') === 'true';
-  });
-
-  if (allCompleted || skipped) return null;
+  if (allCompleted || onboardingSkipped) return null;
 
   const firstIncompleteId = steps.find((s) => !s.completed)?.id;
   const isFundStepActive = firstIncompleteId === 'fund-wallet';
 
-  const handleSkip = () => {
-    localStorage.setItem('oneclick_onboarding_skipped', 'true');
-    setSkipped(true);
-  };
-
   return (
+    <>
     <div className="mb-6 rounded-2xl border border-gray-800/50 bg-gray-900/50 p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-bold text-white">Welcome to OneClick! 👋</h2>
         <button
-          onClick={handleSkip}
+          onClick={() => setShowSkipModal(true)}
           className="text-xs text-gray-500 transition-colors hover:text-gray-300"
         >
           Skip
@@ -279,5 +271,35 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
         })}
       </div>
     </div>
+
+    {/* Skip confirmation modal */}
+    {showSkipModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-gray-700 bg-gray-900 p-6">
+          <h3 className="text-base font-bold text-white mb-2">Skip onboarding?</h3>
+          <p className="text-sm text-gray-400 mb-5">
+            You can always resume the tutorial later from the Discover tab.
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowSkipModal(false)}
+              className="flex-1 rounded-xl bg-gray-800 px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setOnboardingSkipped(true);
+                setShowSkipModal(false);
+              }}
+              className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600"
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

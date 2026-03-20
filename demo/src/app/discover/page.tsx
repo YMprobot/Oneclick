@@ -141,24 +141,21 @@ type CategoryFilter = 'All' | DApp['category'];
 const CATEGORIES: CategoryFilter[] = ['All', 'DeFi', 'Gaming', 'RWA', 'Infrastructure'];
 
 export default function DiscoverPage() {
-  const { wallet, hydrated, testModeActive } = useWallet();
+  const { wallet, hydrated, testModeActive, onboardingSkipped, setOnboardingSkipped } = useWallet();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('All');
-  const [onboardingSkipped, setOnboardingSkipped] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!wallet) {
       router.push('/app');
-      return;
     }
-    setOnboardingSkipped(localStorage.getItem('oneclick_onboarding_skipped') === 'true');
   }, [wallet, hydrated, router]);
 
   const handleResumeOnboarding = useCallback(() => {
-    localStorage.removeItem('oneclick_onboarding_skipped');
+    setOnboardingSkipped(false);
     router.push('/dashboard');
-  }, [router]);
+  }, [router, setOnboardingSkipped]);
 
   if (!hydrated || !wallet) return null;
 
