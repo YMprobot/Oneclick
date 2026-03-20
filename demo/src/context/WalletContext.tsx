@@ -15,6 +15,8 @@ interface WalletState {
 interface WalletContextType {
   wallet: WalletState | null;
   hydrated: boolean;
+  testModeActive: boolean;
+  setTestModeActive: (active: boolean) => void;
   setWallet: (wallet: WalletState) => void;
   disconnect: () => void;
 }
@@ -35,6 +37,7 @@ function loadWallet(): WalletState | null {
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [wallet, setWalletState] = useState<WalletState | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [testModeActive, setTestModeActive] = useState(false);
 
   // Hydrate from sessionStorage after mount to avoid SSR mismatch
   useEffect(() => {
@@ -50,11 +53,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   };
   const disconnect = () => {
     setWalletState(null);
+    setTestModeActive(false);
     try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
   };
 
   return (
-    <WalletContext.Provider value={{ wallet, hydrated, setWallet, disconnect }}>
+    <WalletContext.Provider value={{ wallet, hydrated, testModeActive, setTestModeActive, setWallet, disconnect }}>
       {children}
     </WalletContext.Provider>
   );

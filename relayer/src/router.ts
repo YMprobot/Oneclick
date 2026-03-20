@@ -6,6 +6,8 @@ import { addTransaction, getTransactions } from './transactions.js';
 import type { SmartRouteStep } from './transactions.js';
 import { storeWallet, getWalletKeys } from './walletStore.js';
 import { getTokensForChain } from './tokens.js';
+import { fundWallet } from './faucet.js';
+import { getTestModeProgress } from './testModeProgress.js';
 import {
   buildSwapNativeForTokensCalldata,
   buildSwapTokensForNativeCalldata,
@@ -920,6 +922,7 @@ export function createRouter(executor: Executor): Router {
         hash,
         status: 'confirmed',
         timestamp: Date.now(),
+        txType: 'swap',
       });
 
       console.log(`  swap confirmed: ${hash}`);
@@ -1024,6 +1027,51 @@ export function createRouter(executor: Executor): Router {
         source: 'fallback',
         cached: false,
       });
+    }
+  });
+
+  // POST /faucet/fund — fund a wallet with test tokens (Test Mode)
+  router.post('/faucet/fund', async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+
+      if (!walletAddress || !ethers.isAddress(walletAddress)) {
+        res.status(400).json({ error: 'Invalid or missing walletAddress' });
+        return;
+      }
+
+      console.log(`POST /faucet/fund — wallet: ${walletAddress}`);
+      const result = await fundWallet(walletAddress);
+
+      if (!result.success) {
+        res.status(500).json({ success: false, error: result.error });
+        return;
+      }
+
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`POST /faucet/fund failed: ${message}`);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
+  // GET /test-mode/progress — get Test Mode progress for a wallet
+  router.get('/test-mode/progress', async (req, res) => {
+    try {
+      const walletAddress = req.query.walletAddress as string;
+
+      if (!walletAddress) {
+        res.status(400).json({ error: 'Missing walletAddress query parameter' });
+        return;
+      }
+
+      const progress = await getTestModeProgress(walletAddress);
+      res.json(progress);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`GET /test-mode/progress failed: ${message}`);
+      res.status(500).json({ error: message });
     }
   });
 
