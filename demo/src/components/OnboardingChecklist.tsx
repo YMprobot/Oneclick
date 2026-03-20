@@ -114,7 +114,7 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
         {
           id: 'swap-tokens',
           title: 'Swap 0.5 AVAX → USDC',
-          description: 'Try a token swap on TraderJoe',
+          description: 'Try a token swap',
           completed: hasSwapTransaction,
           action: () => router.push('/swap'),
           actionLabel: 'Swap',
