@@ -52,6 +52,11 @@ const walletIface = new ethers.Interface([
   'function executeAsRelayer(address target, uint256 value, bytes data)',
 ]);
 
+// Known DEX router addresses — if a wallet call targets one of these, it's a swap
+const KNOWN_ROUTERS = new Set([
+  '0xb4315e873dbcf96ffd0acd8ea43f689d8c20fb30', // TraderJoe LBRouter (Fuji + Mainnet)
+]);
+
 /** Decode wallet contract calldata to extract the real target and value. */
 function decodeWalletCall(input: string): { target: string; value: string; txType: string } | null {
   const selector = input.slice(0, 10);
@@ -60,10 +65,12 @@ function decodeWalletCall(input: string): { target: string; value: string; txTyp
 
   try {
     const decoded = walletIface.decodeFunctionData(methodName, input);
+    const target = decoded[0] as string;
+    const isSwap = KNOWN_ROUTERS.has(target.toLowerCase());
     return {
-      target: decoded[0] as string,
+      target,
       value: (decoded[1] as bigint).toString(),
-      txType: 'send',
+      txType: isSwap ? 'swap' : 'send',
     };
   } catch {
     return null;
@@ -138,7 +145,7 @@ async function fetchOnChainTxs(walletAddress: string, limit: number): Promise<Tr
             hash: tx.hash,
             status,
             timestamp: parseInt(tx.timeStamp, 10) * 1000,
-            txType: 'send',
+            txType: decoded.txType as TransactionRecord['txType'],
           });
         }
       } catch {

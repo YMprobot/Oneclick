@@ -61,11 +61,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Check faucet status when wallet address becomes available
+  // Always check faucet status on mount (onboardingSkipped lives on relayer)
   useEffect(() => {
     if (!wallet?.address) return;
-    // Skip if already known from sessionStorage
-    if (testModeActive) return;
 
     fetch(`${RELAYER_URL}/faucet/status?walletAddress=${wallet.address}`)
       .then((r) => r.json())
@@ -74,12 +72,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           setTestModeActiveState(true);
           try { sessionStorage.setItem(TEST_MODE_KEY, 'true'); } catch { /* noop */ }
         }
-        if (data.onboardingSkipped) {
-          setOnboardingSkippedState(true);
-        }
+        setOnboardingSkippedState(data.onboardingSkipped === true);
       })
       .catch(() => {});
-  }, [wallet?.address, testModeActive]);
+  }, [wallet?.address]);
 
   const setTestModeActive = (v: boolean) => {
     setTestModeActiveState(v);
