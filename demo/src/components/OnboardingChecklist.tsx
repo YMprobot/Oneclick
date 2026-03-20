@@ -204,7 +204,7 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
                     <button
                       onClick={handleTestMode}
                       disabled={testModeLoading}
-                      className="flex-1 rounded-lg px-4 py-2.5 text-sm text-gray-400 transition-colors hover:text-gray-300 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="flex-1 rounded-lg border border-gray-700 bg-gray-800/50 px-4 py-2.5 text-sm text-gray-400 transition-colors hover:border-gray-600 hover:bg-gray-800 hover:text-gray-300 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {testModeLoading ? (
                         <span className="flex items-center justify-center gap-2">
