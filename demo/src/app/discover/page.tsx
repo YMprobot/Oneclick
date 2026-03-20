@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWallet } from '@/context/WalletContext';
 import { BottomNav } from '@/components/BottomNav';
@@ -141,16 +141,24 @@ type CategoryFilter = 'All' | DApp['category'];
 const CATEGORIES: CategoryFilter[] = ['All', 'DeFi', 'Gaming', 'RWA', 'Infrastructure'];
 
 export default function DiscoverPage() {
-  const { wallet, hydrated } = useWallet();
+  const { wallet, hydrated, testModeActive } = useWallet();
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<CategoryFilter>('All');
+  const [onboardingSkipped, setOnboardingSkipped] = useState(false);
 
   useEffect(() => {
     if (!hydrated) return;
     if (!wallet) {
       router.push('/app');
+      return;
     }
+    setOnboardingSkipped(localStorage.getItem('oneclick_onboarding_skipped') === 'true');
   }, [wallet, hydrated, router]);
+
+  const handleResumeOnboarding = useCallback(() => {
+    localStorage.removeItem('oneclick_onboarding_skipped');
+    router.push('/dashboard');
+  }, [router]);
 
   if (!hydrated || !wallet) return null;
 
@@ -259,6 +267,25 @@ export default function DiscoverPage() {
             ))}
           </div>
         </div>
+
+        {/* Resume onboarding */}
+        {onboardingSkipped && testModeActive && (
+          <div className="mt-6 mb-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">📚</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-white">Continue learning</p>
+                <p className="text-xs text-gray-400 mt-0.5">Pick up where you left off with test tokens</p>
+              </div>
+              <button
+                onClick={handleResumeOnboarding}
+                className="shrink-0 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-400 transition-colors hover:bg-amber-500/20"
+              >
+                Resume
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* CTA banner */}
         <div className="mt-8 mb-6 rounded-2xl border border-gray-800/50 bg-gradient-to-r from-red-500/5 to-orange-500/5 p-5">

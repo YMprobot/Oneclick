@@ -156,14 +156,32 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
   const completedCount = steps.filter((s) => s.completed).length;
   const allCompleted = steps.every((s) => s.completed);
 
-  if (allCompleted) return null;
+  const [skipped, setSkipped] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('oneclick_onboarding_skipped') === 'true';
+  });
+
+  if (allCompleted || skipped) return null;
 
   const firstIncompleteId = steps.find((s) => !s.completed)?.id;
   const isFundStepActive = firstIncompleteId === 'fund-wallet';
 
+  const handleSkip = () => {
+    localStorage.setItem('oneclick_onboarding_skipped', 'true');
+    setSkipped(true);
+  };
+
   return (
     <div className="mb-6 rounded-2xl border border-gray-800/50 bg-gray-900/50 p-5">
-      <h2 className="text-lg font-bold text-white mb-3">Welcome to OneClick! 👋</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-white">Welcome to OneClick! 👋</h2>
+        <button
+          onClick={handleSkip}
+          className="text-xs text-gray-500 transition-colors hover:text-gray-300"
+        >
+          Skip
+        </button>
+      </div>
 
       {/* Progress bar */}
       <div className="flex items-center gap-3 mb-5">
