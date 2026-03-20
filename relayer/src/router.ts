@@ -922,6 +922,7 @@ export function createRouter(executor: Executor): Router {
         hash,
         status: 'confirmed',
         timestamp: Date.now(),
+        txType: 'swap',
       });
 
       console.log(`  swap confirmed: ${hash}`);

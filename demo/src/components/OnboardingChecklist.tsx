@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useWallet } from '@/context/WalletContext';
 import { RELAYER_URL } from '@/lib/constants';
 import { Spinner } from '@/components/Spinner';
 
@@ -44,6 +45,7 @@ interface OnboardingChecklistProps {
   walletAddress: string;
   hasAssets: boolean;
   hasTransactions: boolean;
+  hasSwapTransaction: boolean;
   onReceive: () => void;
   onTestModeActivated?: () => void;
 }
@@ -57,8 +59,9 @@ interface Step {
   actionLabel?: string;
 }
 
-export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions, onReceive, onTestModeActivated }: OnboardingChecklistProps) {
+export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions, hasSwapTransaction, onReceive, onTestModeActivated }: OnboardingChecklistProps) {
   const router = useRouter();
+  const { testModeActive } = useWallet();
   const [testModeFunded, setTestModeFunded] = useState(false);
   const [testModeLoading, setTestModeLoading] = useState(false);
   const [testModeError, setTestModeError] = useState<string | null>(null);
@@ -81,7 +84,6 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
         return;
       }
 
-      // Success or alreadyFunded
       setTestModeFunded(true);
       onTestModeActivated?.();
     } catch {
@@ -91,32 +93,65 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
     }
   };
 
-  const fundStepComplete = hasAssets || testModeFunded;
+  const fundStepComplete = hasAssets || testModeFunded || testModeActive;
 
-  const steps: Step[] = [
-    {
-      id: 'create-wallet',
-      title: 'Create your wallet',
-      description: 'Signed up with fingerprint',
-      completed: true,
-    },
-    {
-      id: 'fund-wallet',
-      title: 'Fund your wallet',
-      description: 'Deposit AVAX to get started',
-      completed: fundStepComplete,
-      action: onReceive,
-      actionLabel: 'Deposit',
-    },
-    {
-      id: 'first-transaction',
-      title: 'Make your first transaction',
-      description: 'Send, swap, or explore dApps',
-      completed: hasTransactions,
-      action: () => router.push('/send'),
-      actionLabel: 'Send',
-    },
-  ];
+  // Test mode: 4 steps with swap tutorial
+  // Normal mode: 3 steps (original)
+  const steps: Step[] = testModeActive
+    ? [
+        {
+          id: 'create-wallet',
+          title: 'Create your wallet',
+          description: 'Signed up with fingerprint',
+          completed: true,
+        },
+        {
+          id: 'get-tokens',
+          title: 'Get test tokens',
+          description: 'Received 1 Test AVAX',
+          completed: true,
+        },
+        {
+          id: 'swap-tokens',
+          title: 'Swap 0.5 AVAX → USDC',
+          description: 'Try a token swap on TraderJoe',
+          completed: hasSwapTransaction,
+          action: () => router.push('/swap'),
+          actionLabel: 'Swap',
+        },
+        {
+          id: 'send-tokens',
+          title: 'Send tokens',
+          description: 'Send AVAX or USDC to any address',
+          completed: hasTransactions,
+          action: () => router.push('/send'),
+          actionLabel: 'Send',
+        },
+      ]
+    : [
+        {
+          id: 'create-wallet',
+          title: 'Create your wallet',
+          description: 'Signed up with fingerprint',
+          completed: true,
+        },
+        {
+          id: 'fund-wallet',
+          title: 'Fund your wallet',
+          description: 'Deposit AVAX to get started',
+          completed: fundStepComplete,
+          action: onReceive,
+          actionLabel: 'Deposit',
+        },
+        {
+          id: 'first-transaction',
+          title: 'Make your first transaction',
+          description: 'Send, swap, or explore dApps',
+          completed: hasTransactions,
+          action: () => router.push('/send'),
+          actionLabel: 'Send',
+        },
+      ];
 
   const completedCount = steps.filter((s) => s.completed).length;
   const allCompleted = steps.every((s) => s.completed);
@@ -174,7 +209,7 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
                   </p>
                 </div>
 
-                {/* Action button (non-fund steps) */}
+                {/* Action button (regular steps) */}
                 {step.id !== 'fund-wallet' && !step.completed && isActive && step.action && (
                   <button
                     onClick={step.action}
@@ -185,10 +220,9 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
                 )}
               </div>
 
-              {/* Fund wallet step — Deposit + Test Mode buttons */}
+              {/* Fund wallet step — Deposit + Test Mode buttons (only in normal mode) */}
               {step.id === 'fund-wallet' && isFundStepActive && !step.completed && (
                 <div className="ml-10 mt-3 space-y-2.5">
-                  {/* Deposit button */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={onReceive}
@@ -199,7 +233,6 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
                     <Tooltip text="Fund your wallet with AVAX, USDC, or USDT from another wallet or exchange. Once funded, you can send tokens and swap between assets." />
                   </div>
 
-                  {/* Test Mode button */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleTestMode}
@@ -215,7 +248,7 @@ export function OnboardingChecklist({ walletAddress, hasAssets, hasTransactions,
                         '... or Activate Test Mode — Get free test tokens'
                       )}
                     </button>
-                    <Tooltip text="Get free practice tokens (1 AVAX + 5 USDC) on Fuji testnet. Perfect for first-timers — try sending, swapping, and Smart Route with zero risk." />
+                    <Tooltip text="Get free practice tokens (1 AVAX) on Fuji testnet. Perfect for first-timers — try swapping, sending, and Smart Route with zero risk." />
                   </div>
 
                   {testModeError && (

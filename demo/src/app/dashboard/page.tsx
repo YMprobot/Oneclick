@@ -40,6 +40,7 @@ interface TransactionRecord {
   hash: string;
   status: 'confirmed' | 'failed';
   timestamp: number;
+  txType?: 'send' | 'swap' | 'smart-swap-send';
 }
 
 function getGreeting(): string {
@@ -306,8 +307,9 @@ export default function DashboardPage() {
         {!isLoading && !isDeploying && (
           <OnboardingChecklist
             walletAddress={wallet.address}
-            hasAssets={totalUsd > 0}
-            hasTransactions={transactions.length > 0}
+            hasAssets={totalUsd > 0 || (testModeActive && assets.length > 0)}
+            hasTransactions={transactions.some((tx) => tx.txType === 'send' || tx.txType === 'smart-swap-send' || (!tx.txType && tx.status === 'confirmed'))}
+            hasSwapTransaction={transactions.some((tx) => tx.txType === 'swap')}
             onReceive={() => setShowReceiveModal(true)}
             onTestModeActivated={() => {
               fetchData();
