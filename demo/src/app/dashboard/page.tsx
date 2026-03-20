@@ -53,7 +53,7 @@ function getGreeting(): string {
 const DEPLOY_TIMEOUT_MS = 60_000;
 
 export default function DashboardPage() {
-  const { wallet, hydrated } = useWallet();
+  const { wallet, hydrated, setTestModeActive } = useWallet();
   const router = useRouter();
   const [balances, setBalances] = useState<ChainBalance[]>([]);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
@@ -304,6 +304,10 @@ export default function DashboardPage() {
             hasAssets={totalUsd > 0}
             hasTransactions={transactions.length > 0}
             onReceive={() => setShowReceiveModal(true)}
+            onTestModeActivated={() => {
+              fetchData();
+              setTestModeActive(true);
+            }}
           />
         )}
 

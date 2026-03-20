@@ -13,6 +13,8 @@ import {
   ERC20_ABI as SWAP_ERC20_ABI,
 } from './swap.js';
 import { planTransaction } from './smartRouter.js';
+import { fundWallet } from './faucet.js';
+import { isFunded, getFunding } from './faucetStore.js';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -1025,6 +1027,46 @@ export function createRouter(executor: Executor): Router {
         cached: false,
       });
     }
+  });
+
+  // POST /faucet/fund — fund wallet with test tokens (Test Mode)
+  router.post('/faucet/fund', async (req, res) => {
+    try {
+      const { walletAddress } = req.body;
+
+      if (!walletAddress || !ethers.isAddress(walletAddress)) {
+        res.status(400).json({ error: 'Invalid or missing walletAddress' });
+        return;
+      }
+
+      console.log(`POST /faucet/fund — wallet: ${walletAddress}`);
+      const result = await fundWallet(walletAddress);
+
+      if (!result.success) {
+        res.status(500).json({ success: false, error: result.error });
+        return;
+      }
+
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error(`POST /faucet/fund failed: ${message}`);
+      res.status(500).json({ success: false, error: message });
+    }
+  });
+
+  // GET /faucet/status — check if wallet was funded via Test Mode
+  router.get('/faucet/status', (req, res) => {
+    const walletAddress = req.query.walletAddress as string;
+
+    if (!walletAddress) {
+      res.status(400).json({ error: 'Missing walletAddress query parameter' });
+      return;
+    }
+
+    const funded = isFunded(walletAddress);
+    const record = funded ? getFunding(walletAddress) : null;
+    res.json({ funded, fundedAt: record?.fundedAt || null });
   });
 
   // GET /health — health check
